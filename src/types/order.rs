@@ -13,16 +13,17 @@ pub enum Side {
 /// 17 Bytes
 /// This will be padded with additional 7 bytes due to the largest field alignment
 /// So Order is 24 bytes
+#[derive(Clone, Copy)]
 pub struct Order {
     // 8 byte
     // Id will also serve as a sequencer
-    id: u64,
+    id: OrderId,
+    //1 byte
+    side: Side,
     // 4 byte
     price: Price,
     // 4 byte
     quantity: Quantity,
-    //1 byte
-    side: Side,
 }
 
 pub struct IdCounter(u64);

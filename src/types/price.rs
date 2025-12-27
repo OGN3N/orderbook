@@ -5,4 +5,8 @@ impl Price {
     pub fn define(price: u32) -> Self {
         Self(price)
     }
+
+    pub fn value(&self) -> u32 {
+        self.0
+    }
 }

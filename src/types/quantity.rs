@@ -5,4 +5,8 @@ impl Quantity {
     pub fn define(quantity: u32) -> Self {
         Self(quantity)
     }
+
+    pub fn value(&self) -> u32 {
+        self.0
+    }
 }
