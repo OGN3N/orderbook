@@ -10,13 +10,17 @@ const TICK_SIZE: u32 = 1;
 const LOT_SIZE: u32 = 1;
 const ELEMENT_NUM: usize = MAX_PRICE as usize / TICK_SIZE as usize;
 
-// Empty Orderbook: 1000 * 2 * 24 =  48000 bytes or 48 KB
-// + 24 bytes per order
+// Empty Orderbook:
+// -Bids and Asks: 10,000 * 2 * 24(VH)  =  480,000 bytes or 480 KB
+// -Order Index: 48 bytes(HMH)
 
 // Orderbook with 10 orders per level (20,000 orders): 10,000 * 2 * 24 + 48,000 = 528000 b or 5.28 MB
 pub struct Orderbook {
     bids: Box<[Level; ELEMENT_NUM]>,
     asks: Box<[Level; ELEMENT_NUM]>,
+    // entry: OrderId: 8b + Value(S+P): 5b (padded to 8b) = 16b
+    // HashMap overhead per entry: 24-32 bytes
+    // all together: 40 -48 bytes per entry
     order_index: HashMap<OrderId, (Side, Price)>,
 }
 
