@@ -23,12 +23,12 @@ pub struct Orderbook {
 }
 
 /// Level Memory: H(24) + N * 24
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Level {
     /// Vec of 24 bytes per element
     /// Vec header (ptr: *mut Order: 8bytes, len: usize(8bytes), cap: usize(8bytes))
     /// usize on 64-bit system is 8 bytes because its addresses are pointer sized
-    orders: Vec<Order>,
+    pub orders: Vec<Order>,
 }
 
 impl Orderbook {
@@ -75,9 +75,10 @@ impl Orderbook {
             return Err("Quantity cannot be zero".to_string());
         };
 
-        let i = price_value as usize;
+        let i = (price_value / TICK_SIZE) as usize;
 
         match side {
+            // O(1) array access: CPU calculates base_address + (i × 24 bytes) in hardware
             Side::Bid => self.bids[i].add_order(order),
             Side::Ask => self.asks[i].add_order(order),
         }
@@ -85,6 +86,49 @@ impl Orderbook {
         self.order_index.insert(order_id, (side, order.price()));
 
         Ok(())
+    }
+
+    pub fn cancel_order(&mut self, order_id: OrderId) -> Result<(), String> {
+        let (side, price) = self
+            .order_index
+            .remove(&order_id)
+            .ok_or_else(|| format!("Order {} not found", order_id))?;
+
+        let i = (price.value() / TICK_SIZE) as usize;
+
+        match side {
+            Side::Bid => self.bids[i].cancel_order(order_id),
+            Side::Ask => self.asks[i].cancel_order(order_id),
+        };
+
+        Ok(())
+    }
+
+    // Best bid and Best ask are O(n) in worst case -> VERY BAD
+    // That is a tradeoff for adding and canceling order being O(1)
+
+    pub fn best_bid(&self) -> Option<Price> {
+        // O(n)
+
+        // Scan from highest price (end of array) downward
+        for i in (0..ELEMENT_NUM).rev() {
+            if !self.bids[i].is_empty() {
+                // Convert index back to price: i * TICK_SIZE
+                return Some(Price::define((i as u32) * TICK_SIZE));
+            }
+        }
+        None
+    }
+
+    pub fn best_ask(&self) -> Option<Price> {
+        // Scan from lowest price (start of array) upward
+        for i in 0..ELEMENT_NUM {
+            if !self.asks[i].is_empty() {
+                // Convert index back to price: i * TICK_SIZE
+                return Some(Price::define((i as u32) * TICK_SIZE));
+            }
+        }
+        None
     }
 }
 
@@ -95,9 +139,31 @@ impl Level {
     }
 
     pub fn cancel_order(&mut self, order_id: u64) -> Option<Order> {
-        let position = self.orders.iter().position(|o| o.id() == order_id).unwrap();
+        let i = self.orders.iter().position(|o| o.id() == order_id)?;
 
         // O(n) - remove shifts elements after element is removed
-        Some(self.orders.remove(position))
+        Some(self.orders.remove(i))
+    }
+
+    pub fn total_quantity(&self) -> u64 {
+        let q = self
+            .orders
+            .iter()
+            .map(|o| o.quantity().value() as u64)
+            .sum::<u64>();
+
+        q
+    }
+
+    pub fn is_empty(&self) -> bool {
+        if self.orders.len() == 0 {
+            return true;
+        }
+
+        false
+    }
+
+    pub fn first_order(&self) -> Option<&Order> {
+        self.orders.first()
     }
 }
