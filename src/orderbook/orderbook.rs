@@ -13,8 +13,6 @@ const ELEMENT_NUM: usize = MAX_PRICE as usize / TICK_SIZE as usize;
 // Empty Orderbook:
 // -Bids and Asks: 10,000 * 2 * 24(VH)  =  480,000 bytes or 480 KB
 // -Order Index: 48 bytes(HMH)
-
-// Orderbook with 10 orders per level (20,000 orders): 10,000 * 2 * 24 + 48,000 = 528000 b or 5.28 MB
 pub struct Orderbook {
     bids: Box<[Level; ELEMENT_NUM]>,
     asks: Box<[Level; ELEMENT_NUM]>,
