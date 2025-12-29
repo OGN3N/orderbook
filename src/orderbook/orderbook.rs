@@ -2,7 +2,16 @@ use crate::types::order::Order;
 use crate::types::order::OrderId;
 use crate::types::order::Side;
 use crate::types::price::Price;
+use crate::types::quantity::Quantity;
 use std::collections::HashMap;
+
+/// Represents a trade execution (fill)
+#[derive(Debug, Clone)]
+pub struct Fill {
+    pub price: Price,
+    pub quantity: Quantity,
+    pub maker_order_id: OrderId, // Order that was resting in the book
+}
 
 /// Max price is represented in cents - $100 is max price
 const MAX_PRICE: u32 = 10000;
@@ -130,6 +139,72 @@ impl Orderbook {
         }
         None
     }
+
+    /// Execute a market order by consuming liquidity from the book
+    /// Returns a vector of fills (trades that occurred)
+    ///
+    /// Market BUY: consumes asks (starting from lowest price, walking up)
+    /// Market SELL: consumes bids (starting from highest price, walking down)
+    pub fn execute_market_order(
+        &mut self,
+        side: Side,
+        mut remaining_qty: Quantity,
+    ) -> Result<Vec<Fill>, String> {
+        let mut fills = Vec::new();
+
+        match side {
+            // Market BUY: take liquidity from asks (sell side)
+            Side::Bid => {
+                // Walk asks from lowest price upward
+                for i in 0..ELEMENT_NUM {
+                    if remaining_qty.value() == 0 {
+                        break; // Fully filled
+                    }
+
+                    if self.asks[i].is_empty() {
+                        continue; // No liquidity at this level
+                    }
+
+                    let price = Price::define((i as u32) * TICK_SIZE);
+
+                    // Consume orders at this price level (FIFO)
+                    let level_fills =
+                        self.asks[i].match_orders(&mut remaining_qty, price, &mut self.order_index);
+                    fills.extend(level_fills);
+                }
+            }
+
+            // Market SELL: take liquidity from bids (buy side)
+            Side::Ask => {
+                // Walk bids from highest price downward
+                for i in (0..ELEMENT_NUM).rev() {
+                    if remaining_qty.value() == 0 {
+                        break; // Fully filled
+                    }
+
+                    if self.bids[i].is_empty() {
+                        continue; // No liquidity at this level
+                    }
+
+                    let price = Price::define((i as u32) * TICK_SIZE);
+
+                    // Consume orders at this price level (FIFO)
+                    let level_fills =
+                        self.bids[i].match_orders(&mut remaining_qty, price, &mut self.order_index);
+                    fills.extend(level_fills);
+                }
+            }
+        }
+
+        if remaining_qty.value() > 0 {
+            return Err(format!(
+                "Market order partially filled: {} remaining (insufficient liquidity)",
+                remaining_qty.value()
+            ));
+        }
+
+        Ok(fills)
+    }
 }
 
 impl Level {
@@ -165,5 +240,57 @@ impl Level {
 
     pub fn first_order(&self) -> Option<&Order> {
         self.orders.first()
+    }
+
+    /// Match incoming market order against this price level's orders (FIFO)
+    /// Modifies remaining_qty as orders are filled
+    /// Removes filled orders from the level and order_index
+    /// Returns vector of fills that occurred
+    pub fn match_orders(
+        &mut self,
+        remaining_qty: &mut Quantity,
+        price: Price,
+        order_index: &mut HashMap<OrderId, (Side, Price)>,
+    ) -> Vec<Fill> {
+        let mut fills = Vec::new();
+        let mut orders_to_remove = Vec::new();
+
+        // Process orders in FIFO order (first in Vec = earliest order due to push)
+        for (idx, order) in self.orders.iter().enumerate() {
+            if remaining_qty.value() == 0 {
+                break; // Market order fully filled
+            }
+
+            let order_qty = order.quantity().value();
+            let fill_qty = remaining_qty.value().min(order_qty);
+
+            // Create fill
+            fills.push(Fill {
+                price,
+                quantity: Quantity::define(fill_qty),
+                maker_order_id: order.id(),
+            });
+
+            // Update remaining quantity
+            *remaining_qty = Quantity::define(remaining_qty.value() - fill_qty);
+
+            // If order fully filled, mark for removal
+            if fill_qty == order_qty {
+                orders_to_remove.push(idx);
+            } else {
+                // Partial fill - would need to modify order quantity
+                // For now, we don't support partial fills of resting orders
+                // Real implementation would update the order's quantity
+                panic!("Partial fills of resting orders not yet implemented");
+            }
+        }
+
+        // Remove filled orders in reverse order (to maintain indices)
+        for &idx in orders_to_remove.iter().rev() {
+            let removed_order = self.orders.remove(idx);
+            order_index.remove(&removed_order.id());
+        }
+
+        fills
     }
 }
