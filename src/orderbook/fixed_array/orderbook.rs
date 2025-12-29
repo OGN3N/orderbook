@@ -1,17 +1,10 @@
+use crate::orderbook::{Fill, OrderbookTrait};
 use crate::types::order::Order;
 use crate::types::order::OrderId;
 use crate::types::order::Side;
 use crate::types::price::Price;
 use crate::types::quantity::Quantity;
 use std::collections::HashMap;
-
-/// Represents a trade execution (fill)
-#[derive(Debug, Clone)]
-pub struct Fill {
-    pub price: Price,
-    pub quantity: Quantity,
-    pub maker_order_id: OrderId, // Order that was resting in the book
-}
 
 /// Max price is represented in cents - $100 is max price
 const MAX_PRICE: u32 = 10000;
@@ -40,8 +33,8 @@ pub struct Level {
     pub orders: Vec<Order>,
 }
 
-impl Orderbook {
-    pub fn new() -> Self {
+impl OrderbookTrait for Orderbook {
+    fn new() -> Self {
         Self {
             bids: Box::new(std::array::from_fn(|_| Level::default())),
             asks: Box::new(std::array::from_fn(|_| Level::default())),
@@ -49,7 +42,7 @@ impl Orderbook {
         }
     }
 
-    pub fn add_order(&mut self, order: Order) -> Result<(), String> {
+    fn add_order(&mut self, order: Order) -> Result<(), String> {
         let order_id = order.id();
         let side = order.side();
         let price_value = order.price().value();
@@ -97,7 +90,7 @@ impl Orderbook {
         Ok(())
     }
 
-    pub fn cancel_order(&mut self, order_id: OrderId) -> Result<(), String> {
+    fn cancel_order(&mut self, order_id: OrderId) -> Result<(), String> {
         let (side, price) = self
             .order_index
             .remove(&order_id)
@@ -116,7 +109,7 @@ impl Orderbook {
     // Best bid and Best ask are O(n) in worst case -> VERY BAD
     // That is a tradeoff for adding and canceling order being O(1)
 
-    pub fn best_bid(&self) -> Option<Price> {
+    fn best_bid(&self) -> Option<Price> {
         // O(n)
 
         // Scan from highest price (end of array) downward
@@ -129,7 +122,7 @@ impl Orderbook {
         None
     }
 
-    pub fn best_ask(&self) -> Option<Price> {
+    fn best_ask(&self) -> Option<Price> {
         // Scan from lowest price (start of array) upward
         for i in 0..ELEMENT_NUM {
             if !self.asks[i].is_empty() {
@@ -145,7 +138,7 @@ impl Orderbook {
     ///
     /// Market BUY: consumes asks (starting from lowest price, walking up)
     /// Market SELL: consumes bids (starting from highest price, walking down)
-    pub fn execute_market_order(
+    fn execute_market_order(
         &mut self,
         side: Side,
         mut remaining_qty: Quantity,
@@ -205,6 +198,27 @@ impl Orderbook {
 
         Ok(fills)
     }
+
+    fn depth_at_price(&self, price: Price, side: Side) -> u32 {
+        let price_value = price.value();
+
+        // Check bounds
+        if price_value == 0 || price_value >= MAX_PRICE {
+            return 0;
+        }
+
+        // Check tick alignment
+        if price_value % TICK_SIZE != 0 {
+            return 0;
+        }
+
+        let index = (price_value / TICK_SIZE) as usize;
+
+        match side {
+            Side::Bid => self.bids[index].total_quantity(),
+            Side::Ask => self.asks[index].total_quantity(),
+        }
+    }
 }
 
 impl Level {
@@ -220,14 +234,11 @@ impl Level {
         Some(self.orders.remove(i))
     }
 
-    pub fn total_quantity(&self) -> u64 {
-        let q = self
-            .orders
+    pub fn total_quantity(&self) -> u32 {
+        self.orders
             .iter()
-            .map(|o| o.quantity().value() as u64)
-            .sum::<u64>();
-
-        q
+            .map(|o| o.quantity().value())
+            .sum::<u32>()
     }
 
     pub fn is_empty(&self) -> bool {
