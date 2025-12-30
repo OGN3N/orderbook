@@ -252,7 +252,7 @@ impl LevelSoA {
         let pos = self.ids.iter().position(|&id| id == order_id)?;
 
         // Remove from all arrays
-        let id = self.ids.remove(pos);
+        let _id = self.ids.remove(pos);  
         let side = self.sides.remove(pos);
         let price = self.prices.remove(pos);
         let quantity = self.quantities.remove(pos);
