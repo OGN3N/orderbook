@@ -43,8 +43,8 @@ pub struct LevelSoA {
     quantities: Vec<Quantity>,
 }
 
-impl Orderbook {
-    pub fn new() -> Self {
+impl OrderbookTrait for Orderbook {
+    fn new() -> Self {
         Self {
             bids: Box::new(std::array::from_fn(|_| LevelSoA::default())),
             asks: Box::new(std::array::from_fn(|_| LevelSoA::default())),
@@ -52,7 +52,7 @@ impl Orderbook {
         }
     }
 
-    pub fn add_order(&mut self, order: Order) -> Result<(), String> {
+    fn add_order(&mut self, order: Order) -> Result<(), String> {
         let order_id = order.id();
         let side = order.side();
         let price_value = order.price().value();
@@ -99,7 +99,7 @@ impl Orderbook {
         Ok(())
     }
 
-    pub fn cancel_order(&mut self, order_id: OrderId) -> Result<(), String> {
+    fn cancel_order(&mut self, order_id: OrderId) -> Result<(), String> {
         let (side, price) = self
             .order_index
             .remove(&order_id)
@@ -115,7 +115,55 @@ impl Orderbook {
         Ok(())
     }
 
-    pub fn best_bid(&self) -> Option<Price> {
+    fn execute_market_order(
+        &mut self,
+        side: Side,
+        mut quantity: Quantity,
+    ) -> Result<Vec<Fill>, String> {
+        let mut fills = Vec::new();
+
+        match side {
+            Side::Bid => {
+                for i in 0..ELEMENT_NUM {
+                    if quantity.value() == 0 {
+                        break;
+                    }
+                    if self.asks[i].is_empty() {
+                        continue;
+                    }
+                    let price = Price::define((i as u32) * TICK_SIZE);
+                    let level_fills =
+                        self.asks[i].match_orders(&mut quantity, price, &mut self.order_index);
+                    fills.extend(level_fills);
+                }
+            }
+            Side::Ask => {
+                for i in (0..ELEMENT_NUM).rev() {
+                    if quantity.value() == 0 {
+                        break;
+                    }
+                    if self.bids[i].is_empty() {
+                        continue;
+                    }
+                    let price = Price::define((i as u32) * TICK_SIZE);
+                    let level_fills =
+                        self.bids[i].match_orders(&mut quantity, price, &mut self.order_index);
+                    fills.extend(level_fills);
+                }
+            }
+        }
+
+        if quantity.value() > 0 {
+            return Err(format!(
+                "Market order partially filled: {} remaining",
+                quantity.value()
+            ));
+        }
+
+        Ok(fills)
+    }
+
+    fn best_bid(&self) -> Option<Price> {
         for i in (0..ELEMENT_NUM).rev() {
             if !self.bids[i].is_empty() {
                 return Some(Price::define((i as u32) * TICK_SIZE));
@@ -124,7 +172,7 @@ impl Orderbook {
         None
     }
 
-    pub fn best_ask(&self) -> Option<Price> {
+    fn best_ask(&self) -> Option<Price> {
         for i in 0..ELEMENT_NUM {
             if !self.asks[i].is_empty() {
                 return Some(Price::define((i as u32) * TICK_SIZE));
@@ -133,55 +181,7 @@ impl Orderbook {
         None
     }
 
-    pub fn execute_market_order(
-        &mut self,
-        side: Side,
-        mut remaining_qty: Quantity,
-    ) -> Result<Vec<Fill>, String> {
-        let mut fills = Vec::new();
-
-        match side {
-            Side::Bid => {
-                for i in 0..ELEMENT_NUM {
-                    if remaining_qty.value() == 0 {
-                        break;
-                    }
-                    if self.asks[i].is_empty() {
-                        continue;
-                    }
-                    let price = Price::define((i as u32) * TICK_SIZE);
-                    let level_fills =
-                        self.asks[i].match_orders(&mut remaining_qty, price, &mut self.order_index);
-                    fills.extend(level_fills);
-                }
-            }
-            Side::Ask => {
-                for i in (0..ELEMENT_NUM).rev() {
-                    if remaining_qty.value() == 0 {
-                        break;
-                    }
-                    if self.bids[i].is_empty() {
-                        continue;
-                    }
-                    let price = Price::define((i as u32) * TICK_SIZE);
-                    let level_fills =
-                        self.bids[i].match_orders(&mut remaining_qty, price, &mut self.order_index);
-                    fills.extend(level_fills);
-                }
-            }
-        }
-
-        if remaining_qty.value() > 0 {
-            return Err(format!(
-                "Market order partially filled: {} remaining",
-                remaining_qty.value()
-            ));
-        }
-
-        Ok(fills)
-    }
-
-    pub fn depth_at_price(&self, price: Price, side: Side) -> u32 {
+    fn depth_at_price(&self, price: Price, side: Side) -> u32 {
         let price_value = price.value();
 
         if price_value == 0 || price_value >= MAX_PRICE {
@@ -198,40 +198,6 @@ impl Orderbook {
             Side::Bid => self.bids[index].total_quantity(),
             Side::Ask => self.asks[index].total_quantity(),
         }
-    }
-}
-
-impl OrderbookTrait for Orderbook {
-    fn new() -> Self {
-        Orderbook::new()
-    }
-
-    fn add_order(&mut self, order: Order) -> Result<(), String> {
-        self.add_order(order)
-    }
-
-    fn cancel_order(&mut self, order_id: OrderId) -> Result<(), String> {
-        self.cancel_order(order_id)
-    }
-
-    fn execute_market_order(
-        &mut self,
-        side: Side,
-        quantity: Quantity,
-    ) -> Result<Vec<Fill>, String> {
-        self.execute_market_order(side, quantity)
-    }
-
-    fn best_bid(&self) -> Option<Price> {
-        self.best_bid()
-    }
-
-    fn best_ask(&self) -> Option<Price> {
-        self.best_ask()
-    }
-
-    fn depth_at_price(&self, price: Price, side: Side) -> u32 {
-        self.depth_at_price(price, side)
     }
 }
 
