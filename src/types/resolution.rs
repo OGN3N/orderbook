@@ -1,3 +1,5 @@
+#[allow(unused)]
+
 pub struct Resolution(u64, u64);
 
 impl Resolution {
