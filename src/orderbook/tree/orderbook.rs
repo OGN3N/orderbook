@@ -15,11 +15,9 @@ pub struct Orderbook {
 }
 #[derive(Default, Clone)]
 pub struct Level {
-    /// Vec of 24 bytes per element
-    /// Vec header (ptr: *mut Order: 8bytes, len: usize(8bytes), cap: usize(8bytes))
-    /// usize on 64-bit system is 8 bytes because its addresses are pointer sized
     pub orders: Vec<Order>,
 }
+
 impl OrderbookTrait for Orderbook {
     fn new() -> Self {
         Self {

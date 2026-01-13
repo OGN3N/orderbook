@@ -50,5 +50,5 @@ pub trait OrderbookTrait {
 #[allow(non_snake_case)]
 pub mod SoA;
 pub mod fixed_tick;
-pub mod tree;
 pub mod hybrid;
+pub mod tree;
