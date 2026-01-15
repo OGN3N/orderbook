@@ -1,5 +1,63 @@
 use super::rdtsc;
 
+/// Get CPU frequency from /proc/cpuinfo (Linux only)
+/// Returns frequency in GHz, or None if not available
+#[cfg(target_os = "linux")]
+pub fn get_cpu_frequency_from_proc() -> Option<f64> {
+    use std::fs;
+
+    let cpuinfo = fs::read_to_string("/proc/cpuinfo").ok()?;
+
+    for line in cpuinfo.lines() {
+        if line.starts_with("cpu MHz") {
+            let parts: Vec<&str> = line.split(':').collect();
+            if parts.len() == 2 {
+                let mhz = parts[1].trim().parse::<f64>().ok()?;
+                return Some(mhz / 1000.0); // Convert MHz to GHz
+            }
+        }
+    }
+    None
+}
+
+/// Get CPU frequency - tries /proc/cpuinfo first, falls back to estimation
+pub fn get_cpu_frequency() -> f64 {
+    #[cfg(target_os = "linux")]
+    {
+        if let Some(freq) = get_cpu_frequency_from_proc() {
+            return freq;
+        }
+    }
+
+    // Fallback: estimate by measurement
+    estimate_cpu_frequency()
+}
+
+/// Estimate CPU frequency in GHz by measuring cycles over a known time period
+pub fn estimate_cpu_frequency() -> f64 {
+    use std::time::Instant;
+
+    let start_time = Instant::now();
+    let start_cycles = rdtsc();
+
+    // Sleep for 10ms to get a good measurement
+    std::thread::sleep(std::time::Duration::from_millis(10));
+
+    let end_cycles = rdtsc();
+    let end_time = Instant::now();
+
+    let elapsed_ns = end_time.duration_since(start_time).as_nanos() as f64;
+    let elapsed_cycles = (end_cycles - start_cycles) as f64;
+
+    // GHz = (cycles / nanoseconds)
+    elapsed_cycles / elapsed_ns
+}
+
+/// Convert CPU cycles to nanoseconds given a CPU frequency in GHz
+pub fn cycles_to_ns(cycles: u64, cpu_ghz: f64) -> f64 {
+    cycles as f64 / cpu_ghz
+}
+
 pub struct LatencyTracker {
     samples: Vec<u64>,
 }
@@ -44,7 +102,7 @@ pub struct Percentiles {
     pub max: u64,
     pub mean: f64,
     pub p50: u64, // Median
-    /// 95 % of operations are faster 
+    /// 95 % of operations are faster
     pub p95: u64,
     /// tail latencies
     pub p99: u64,
@@ -53,8 +111,7 @@ pub struct Percentiles {
 }
 
 impl LatencyTracker {
-    pub fn precentiles(&mut self) -> Option<Percentiles>
-    {
+    pub fn precentiles(&mut self) -> Option<Percentiles> {
         if self.samples.is_empty() {
             return None;
         }
@@ -75,7 +132,7 @@ impl LatencyTracker {
             p95: self.percentile_at(0.95),
             p99: self.percentile_at(0.99),
             p999: self.percentile_at(0.999),
-            p9999: self.percentile_at(0.9999)
+            p9999: self.percentile_at(0.9999),
         })
     }
 

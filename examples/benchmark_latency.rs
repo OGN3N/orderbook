@@ -1,3 +1,5 @@
+use orderbook::orderbook::OrderbookTrait;
+use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 /// Latency benchmark for orderbook implementations
 ///
 /// Measures the latency of three core operations:
@@ -6,13 +8,11 @@
 /// 3. execute_market_order() - Executing a market order
 ///
 /// Run with: cargo run --release --example benchmark_latency
-
 use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook;
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
-use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
-use orderbook::orderbook::OrderbookTrait;
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
+use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
 use orderbook::types::order::{IdCounter, Order, OrderId, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
@@ -21,27 +21,54 @@ const NUM_SAMPLES: usize = 10_000;
 
 fn main() {
     println!("=== Orderbook Latency Benchmark ===\n");
-    println!("Measuring {} samples per operation\n", NUM_SAMPLES);
+
+    // Get CPU frequency
+    println!("Detecting CPU frequency...");
+    let cpu_ghz = get_cpu_frequency();
+    println!("CPU frequency: {:.3} GHz", cpu_ghz);
+
+    // Show CPU model if available (Linux only)
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
+            for line in cpuinfo.lines() {
+                if line.starts_with("model name") {
+                    if let Some(model) = line.split(':').nth(1) {
+                        println!("CPU model: {}", model.trim());
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    println!("\nMeasuring {} samples per operation\n", NUM_SAMPLES);
 
     // Benchmark each implementation
     println!("--- Fixed-Tick Array Orderbook ---");
     let fixed_stats = benchmark_orderbook::<FixedTickOrderbook>();
-    print_results(&fixed_stats);
+    print_results(&fixed_stats, cpu_ghz);
 
     println!("\n--- Structure-of-Arrays (SoA) Orderbook ---");
     let soa_stats = benchmark_orderbook::<SoAOrderbook>();
-    print_results(&soa_stats);
+    print_results(&soa_stats, cpu_ghz);
 
     println!("\n--- Hybrid (Hot/Cold) Orderbook ---");
     let hybrid_stats = benchmark_orderbook::<HybridOrderbook>();
-    print_results(&hybrid_stats);
+    print_results(&hybrid_stats, cpu_ghz);
 
     println!("\n--- Tree-Based Orderbook ---");
     let tree_stats = benchmark_orderbook::<TreeOrderbook>();
-    print_results(&tree_stats);
+    print_results(&tree_stats, cpu_ghz);
 
     println!("\n=== Comparison Table ===\n");
-    compare_all_implementations(&fixed_stats, &soa_stats, &hybrid_stats, &tree_stats);
+    compare_all_implementations(
+        &fixed_stats,
+        &soa_stats,
+        &hybrid_stats,
+        &tree_stats,
+        cpu_ghz,
+    );
 }
 
 struct BenchmarkResults {
@@ -86,8 +113,7 @@ fn benchmark_orderbook<O: OrderbookTrait>() -> BenchmarkResults {
     // Benchmark cancel_order
     for &order_id in &order_ids {
         cancel_tracker.record(|| {
-            book.cancel_order(order_id)
-                .expect("Failed to cancel order");
+            book.cancel_order(order_id).expect("Failed to cancel order");
         });
     }
 
@@ -119,31 +145,67 @@ fn benchmark_orderbook<O: OrderbookTrait>() -> BenchmarkResults {
 
     BenchmarkResults {
         add_order: add_tracker.precentiles().expect("No add_order samples"),
-        cancel_order: cancel_tracker.precentiles().expect("No cancel_order samples"),
-        market_order: market_tracker.precentiles().expect("No market_order samples"),
+        cancel_order: cancel_tracker
+            .precentiles()
+            .expect("No cancel_order samples"),
+        market_order: market_tracker
+            .precentiles()
+            .expect("No market_order samples"),
     }
 }
 
-fn print_results(results: &BenchmarkResults) {
+fn print_results(results: &BenchmarkResults, cpu_ghz: f64) {
     println!("add_order():");
-    print_percentiles(&results.add_order);
+    print_percentiles(&results.add_order, cpu_ghz);
 
     println!("\ncancel_order():");
-    print_percentiles(&results.cancel_order);
+    print_percentiles(&results.cancel_order, cpu_ghz);
 
     println!("\nexecute_market_order():");
-    print_percentiles(&results.market_order);
+    print_percentiles(&results.market_order, cpu_ghz);
 }
 
-fn print_percentiles(p: &Percentiles) {
-    println!("  Min:    {:>8} cycles", p.min);
-    println!("  p50:    {:>8} cycles (median)", p.p50);
-    println!("  Mean:   {:>8.2} cycles", p.mean);
-    println!("  p95:    {:>8} cycles", p.p95);
-    println!("  p99:    {:>8} cycles", p.p99);
-    println!("  p99.9:  {:>8} cycles", p.p999);
-    println!("  p99.99: {:>8} cycles", p.p9999);
-    println!("  Max:    {:>8} cycles", p.max);
+fn print_percentiles(p: &Percentiles, cpu_ghz: f64) {
+    println!(
+        "  Min:    {:>8} cycles  ({:>7.1} ns)",
+        p.min,
+        cycles_to_ns(p.min, cpu_ghz)
+    );
+    println!(
+        "  p50:    {:>8} cycles  ({:>7.1} ns) (median)",
+        p.p50,
+        cycles_to_ns(p.p50, cpu_ghz)
+    );
+    println!(
+        "  Mean:   {:>8.2} cycles  ({:>7.1} ns)",
+        p.mean,
+        p.mean / cpu_ghz
+    );
+    println!(
+        "  p95:    {:>8} cycles  ({:>7.1} ns)",
+        p.p95,
+        cycles_to_ns(p.p95, cpu_ghz)
+    );
+    println!(
+        "  p99:    {:>8} cycles  ({:>7.1} ns)",
+        p.p99,
+        cycles_to_ns(p.p99, cpu_ghz)
+    );
+    println!(
+        "  p99.9:  {:>8} cycles  ({:>7.1} ns)",
+        p.p999,
+        cycles_to_ns(p.p999, cpu_ghz)
+    );
+    println!(
+        "  p99.99: {:>8} cycles  ({:>7.1} ns)",
+        p.p9999,
+        cycles_to_ns(p.p9999, cpu_ghz)
+    );
+    println!(
+        "  Max:    {:>8} cycles  ({:>7.1} ns)",
+        p.max,
+        cycles_to_ns(p.max, cpu_ghz)
+    );
 }
 
 fn compare_all_implementations(
@@ -151,6 +213,7 @@ fn compare_all_implementations(
     soa: &BenchmarkResults,
     hybrid: &BenchmarkResults,
     tree: &BenchmarkResults,
+    cpu_ghz: f64,
 ) {
     println!("Median (p50) Latencies:");
     println!("{:-<80}", "");
@@ -214,24 +277,33 @@ fn compare_all_implementations(
 
     // Find and highlight the winner for each operation
     println!("\nWinners (lowest latency):");
-    print_winner("add_order (p50)", &[
-        ("Fixed-Tick", fixed.add_order.p50),
-        ("SoA", soa.add_order.p50),
-        ("Hybrid", hybrid.add_order.p50),
-        ("Tree", tree.add_order.p50),
-    ]);
-    print_winner("cancel_order (p50)", &[
-        ("Fixed-Tick", fixed.cancel_order.p50),
-        ("SoA", soa.cancel_order.p50),
-        ("Hybrid", hybrid.cancel_order.p50),
-        ("Tree", tree.cancel_order.p50),
-    ]);
-    print_winner("market_order (p50)", &[
-        ("Fixed-Tick", fixed.market_order.p50),
-        ("SoA", soa.market_order.p50),
-        ("Hybrid", hybrid.market_order.p50),
-        ("Tree", tree.market_order.p50),
-    ]);
+    print_winner(
+        "add_order (p50)",
+        &[
+            ("Fixed-Tick", fixed.add_order.p50),
+            ("SoA", soa.add_order.p50),
+            ("Hybrid", hybrid.add_order.p50),
+            ("Tree", tree.add_order.p50),
+        ],
+    );
+    print_winner(
+        "cancel_order (p50)",
+        &[
+            ("Fixed-Tick", fixed.cancel_order.p50),
+            ("SoA", soa.cancel_order.p50),
+            ("Hybrid", hybrid.cancel_order.p50),
+            ("Tree", tree.cancel_order.p50),
+        ],
+    );
+    print_winner(
+        "market_order (p50)",
+        &[
+            ("Fixed-Tick", fixed.market_order.p50),
+            ("SoA", soa.market_order.p50),
+            ("Hybrid", hybrid.market_order.p50),
+            ("Tree", tree.market_order.p50),
+        ],
+    );
 }
 
 fn print_comparison_row(name: &str, fixed: u64, soa: u64, hybrid: u64, tree: u64) {
@@ -242,10 +314,7 @@ fn print_comparison_row(name: &str, fixed: u64, soa: u64, hybrid: u64, tree: u64
 }
 
 fn print_winner(operation: &str, results: &[(&str, u64)]) {
-    let (winner_name, winner_cycles) = results
-        .iter()
-        .min_by_key(|(_, cycles)| cycles)
-        .unwrap();
+    let (winner_name, winner_cycles) = results.iter().min_by_key(|(_, cycles)| cycles).unwrap();
 
     let second_best_cycles = results
         .iter()
