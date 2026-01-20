@@ -4,4 +4,3 @@ pub mod optimization;
 pub mod orderbook;
 pub mod perf;
 pub mod types;
-pub mod workload;
