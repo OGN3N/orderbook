@@ -13,7 +13,7 @@ use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
 use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
-use orderbook::types::order::{IdCounter, Order, OrderId, Side};
+use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
 
@@ -213,7 +213,7 @@ fn compare_all_implementations(
     soa: &BenchmarkResults,
     hybrid: &BenchmarkResults,
     tree: &BenchmarkResults,
-    cpu_ghz: f64,
+    _cpu_ghz: f64,
 ) {
     println!("Median (p50) Latencies:");
     println!("{:-<80}", "");
