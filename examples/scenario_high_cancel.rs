@@ -14,6 +14,7 @@ use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
 use orderbook::types::order::{IdCounter, Order, OrderId, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
+use orderbook::analysis::{CsvExporter, ResultRow};
 use rand::prelude::*;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -126,6 +127,35 @@ fn main() {
 
     println!("\n--- Cancel Performance Focus (most critical for HFT) ---");
     print_cancel_focus(&fixed, &soa, &hybrid, &tree, cpu_ghz);
+
+    // Export results to CSV
+    let scenario_name = "scenario_high_cancel";
+    let impls = [
+        ("fixed_tick", &fixed),
+        ("soa", &soa),
+        ("hybrid", &hybrid),
+        ("tree", &tree),
+    ];
+    match CsvExporter::create(scenario_name) {
+        Ok(mut csv) => {
+            for (impl_name, stats) in &impls {
+                for (op, p) in [
+                    ("add_order", &stats.add_order),
+                    ("cancel_order", &stats.cancel_order),
+                    ("market_order", &stats.market_order),
+                ] {
+                    let _ = csv.append(&ResultRow {
+                        scenario: scenario_name,
+                        implementation: impl_name,
+                        operation: op,
+                        cpu_ghz,
+                        percentiles: p,
+                    });
+                }
+            }
+        }
+        Err(e) => eprintln!("Warning: could not write CSV: {}", e),
+    }
 }
 
 struct ScenarioResults {
@@ -342,6 +372,7 @@ fn print_cancel_focus(
         cycles_to_ns(hybrid.cancel_order.p50, cpu_ghz),
         cycles_to_ns(tree.cancel_order.p50, cpu_ghz),
     );
+
 }
 
 

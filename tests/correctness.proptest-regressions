@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 9dd2351faf36a28f251d8e0addc58baede56952d7f13bfa0075fa6a6ac944098 # shrinks to ops = [Add { side: Bid, price: 1781, qty: 1 }, Add { side: Ask, price: 1000, qty: 1 }]
+cc 72f2ae0e830589505b83503985dde8a6ec5266944b7e0bcccd4d252f6fac278f # shrinks to ops = [Add { side: Ask, price: 4900, qty: 1 }, Add { side: Ask, price: 1000, qty: 1 }]

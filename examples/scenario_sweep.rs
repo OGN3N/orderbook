@@ -13,6 +13,7 @@ use orderbook::perf::latency::{LatencyTracker, Percentiles};
 use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
 use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
+use orderbook::analysis::{CsvExporter, ResultRow};
 use orderbook::types::quantity::Quantity;
 
 const MID_PRICE: u32 = 5_000;
@@ -137,6 +138,34 @@ fn main() {
 
     println!("\n--- Scaling Analysis (latency per level) ---");
     print_scaling(&fixed, &soa, &hybrid, &tree, cpu_ghz);
+
+    // Export results to CSV
+    let impls = [
+        ("fixed_tick", &fixed),
+        ("soa", &soa),
+        ("hybrid", &hybrid),
+        ("tree", &tree),
+    ];
+    match CsvExporter::create("scenario_sweep") {
+        Ok(mut csv) => {
+            for (impl_name, stats) in &impls {
+                for (op, p) in [
+                    ("small_sweep", &stats.small_sweep),
+                    ("medium_sweep", &stats.medium_sweep),
+                    ("large_sweep", &stats.large_sweep),
+                ] {
+                    let _ = csv.append(&ResultRow {
+                        scenario: "scenario_sweep",
+                        implementation: impl_name,
+                        operation: op,
+                        cpu_ghz,
+                        percentiles: p,
+                    });
+                }
+            }
+        }
+        Err(e) => eprintln!("Warning: could not write CSV: {}", e),
+    }
 }
 
 struct SweepResults {
@@ -397,4 +426,5 @@ fn print_scaling(
     println!("  - Consistent cycles/level = good O(n) scaling");
     println!("  - Decreasing cycles/level = amortized overhead (good)");
     println!("  - Increasing cycles/level = cache pressure or algorithmic issues");
+
 }

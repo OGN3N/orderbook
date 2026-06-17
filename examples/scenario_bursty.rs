@@ -14,6 +14,7 @@ use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
 use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
+use orderbook::analysis::{CsvExporter, ResultRow};
 use rand::prelude::*;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -120,6 +121,35 @@ fn main() {
 
     println!("\n--- Latency Variance (p99/p50 ratio) ---");
     print_variance(&fixed, &soa, &hybrid, &tree);
+
+    // Export results to CSV
+    let scenario_name = "scenario_bursty";
+    let impls = [
+        ("fixed_tick", &fixed),
+        ("soa", &soa),
+        ("hybrid", &hybrid),
+        ("tree", &tree),
+    ];
+    match CsvExporter::create(scenario_name) {
+        Ok(mut csv) => {
+            for (impl_name, stats) in &impls {
+                for (op, p) in [
+                    ("add_order", &stats.add_order),
+                    ("cancel_order", &stats.cancel_order),
+                    ("market_order", &stats.market_order),
+                ] {
+                    let _ = csv.append(&ResultRow {
+                        scenario: scenario_name,
+                        implementation: impl_name,
+                        operation: op,
+                        cpu_ghz,
+                        percentiles: p,
+                    });
+                }
+            }
+        }
+        Err(e) => eprintln!("Warning: could not write CSV: {}", e),
+    }
 }
 
 struct ScenarioResults {
@@ -358,4 +388,5 @@ fn print_variance(
         ratio(hybrid.market_order.p99, hybrid.market_order.p50),
         ratio(tree.market_order.p99, tree.market_order.p50),
     );
+
 }

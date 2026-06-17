@@ -282,33 +282,31 @@ impl OrderbookTrait for Orderbook {
     }
 
     fn best_bid(&self) -> Option<Price> {
-        // Search hot zone first (highest to lowest)
-        for i in (0..HOT_ZONE_SIZE).rev() {
-            if !self.hot_bids[i].orders.is_empty() {
-                let price_value = self.hot_zone_center - HOT_ZONE_RADIUS as u32 + i as u32;
-                return Some(Price::define(price_value));
-            }
+        // Best bid = highest bid across both zones.
+        let hot = (0..HOT_ZONE_SIZE).rev()
+            .find(|&i| !self.hot_bids[i].orders.is_empty())
+            .map(|i| self.hot_zone_center - HOT_ZONE_RADIUS as u32 + i as u32);
+        let cold = self.cold_bids.last_key_value().map(|(&p, _)| p);
+        match (hot, cold) {
+            (Some(h), Some(c)) => Some(Price::define(h.max(c))),
+            (Some(h), None)    => Some(Price::define(h)),
+            (None,    Some(c)) => Some(Price::define(c)),
+            (None,    None)    => None,
         }
-
-        // If not in hot zone, check cold zone
-        self.cold_bids
-            .last_key_value()
-            .map(|(&price_value, _)| Price::define(price_value))
     }
 
     fn best_ask(&self) -> Option<Price> {
-        // Search hot zone first (lowest to highest)
-        for i in 0..HOT_ZONE_SIZE {
-            if !self.hot_asks[i].orders.is_empty() {
-                let price_value = self.hot_zone_center - HOT_ZONE_RADIUS as u32 + i as u32;
-                return Some(Price::define(price_value));
-            }
+        // Best ask = lowest ask across both zones.
+        let hot = (0..HOT_ZONE_SIZE)
+            .find(|&i| !self.hot_asks[i].orders.is_empty())
+            .map(|i| self.hot_zone_center - HOT_ZONE_RADIUS as u32 + i as u32);
+        let cold = self.cold_asks.first_key_value().map(|(&p, _)| p);
+        match (hot, cold) {
+            (Some(h), Some(c)) => Some(Price::define(h.min(c))),
+            (Some(h), None)    => Some(Price::define(h)),
+            (None,    Some(c)) => Some(Price::define(c)),
+            (None,    None)    => None,
         }
-
-        // If not in hot zone, check cold zone
-        self.cold_asks
-            .first_key_value()
-            .map(|(&price_value, _)| Price::define(price_value))
     }
 
     fn depth_at_price(&self, price: Price, side: Side) -> u32 {

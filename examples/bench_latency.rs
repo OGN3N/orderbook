@@ -1,3 +1,4 @@
+use orderbook::analysis::{CsvExporter, ResultRow};
 use orderbook::orderbook::OrderbookTrait;
 use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 /// Latency benchmark for orderbook implementations
@@ -69,6 +70,34 @@ fn main() {
         &tree_stats,
         cpu_ghz,
     );
+
+    // Export results to CSV
+    let impls = [
+        ("fixed_tick", &fixed_stats),
+        ("soa", &soa_stats),
+        ("hybrid", &hybrid_stats),
+        ("tree", &tree_stats),
+    ];
+    match CsvExporter::create("bench_latency") {
+        Ok(mut csv) => {
+            for (impl_name, stats) in &impls {
+                for (op, p) in [
+                    ("add_order", &stats.add_order),
+                    ("cancel_order", &stats.cancel_order),
+                    ("market_order", &stats.market_order),
+                ] {
+                    let _ = csv.append(&ResultRow {
+                        scenario: "bench_latency",
+                        implementation: impl_name,
+                        operation: op,
+                        cpu_ghz,
+                        percentiles: p,
+                    });
+                }
+            }
+        }
+        Err(e) => eprintln!("Warning: could not write CSV: {}", e),
+    }
 }
 
 struct BenchmarkResults {

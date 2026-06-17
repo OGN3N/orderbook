@@ -367,6 +367,7 @@ dependencies = [
  "arrayvec",
  "criterion",
  "csv",
+ "libc",
  "perf-event",
  "proptest",
  "rand",
