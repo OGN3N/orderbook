@@ -1,25 +1,30 @@
+use orderbook::analysis::{CsvExporter, ResultRow};
+use orderbook::orderbook::OrderbookTrait;
+use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 /// Scenario 4.1b: Clustered Around Mid Distribution
 ///
 /// 90% of orders within ±10 ticks of mid-price
 /// Tests hot-path optimization and cache locality
 ///
-/// Run with: cargo run --release --example scenario_clustered_mid
+/// Run with: cargo run --release --example scenario_clustered
 use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook;
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
-use orderbook::orderbook::OrderbookTrait;
-use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
 use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
 use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
-use orderbook::analysis::{CsvExporter, ResultRow};
+use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 
-const NUM_SAMPLES: usize = 10_000;
+const TOTAL_SAMPLES: usize = 1_000_000;
+const ORDERS_PER_BOOK: usize = 10_000;
+const MARKET_ORDERS_PER_BOOK: usize = 200;
+const MARKET_SAMPLES_PER_BOOK: usize = 100;
+const ORDER_QUANTITY: u32 = 100;
+const MARKET_SEED_OFFSET: u64 = 1_000_000;
 const MID_PRICE: u32 = 5_000;
 const CLUSTER_RADIUS: u32 = 10; // ±10 ticks from mid
 const CLUSTER_PROBABILITY: f64 = 0.90; // 90% within cluster
@@ -81,7 +86,12 @@ fn main() {
     println!("  Mid price: {}", MID_PRICE);
     println!("  Cluster radius: ±{} ticks", CLUSTER_RADIUS);
     println!("  Cluster probability: {}%", CLUSTER_PROBABILITY * 100.0);
-    println!("  Samples: {}\n", NUM_SAMPLES);
+    println!("  Measurements per operation: {}", TOTAL_SAMPLES);
+    println!("  Orders per add/cancel book: {}", ORDERS_PER_BOOK);
+    println!(
+        "  Market workload per book: {} asks, {} measured buys\n",
+        MARKET_ORDERS_PER_BOOK, MARKET_SAMPLES_PER_BOOK
+    );
 
     let seed: u64 = 42;
 
@@ -155,66 +165,93 @@ fn generate_clustered_price(rng: &mut impl Rng) -> u32 {
 }
 
 fn scenario_clustered_mid<O: OrderbookTrait>(seed: u64) -> ScenarioResults {
-    let mut rng = StdRng::seed_from_u64(seed);
+    let mut add_tracker = LatencyTracker::new(TOTAL_SAMPLES);
+    let mut cancel_tracker = LatencyTracker::new(TOTAL_SAMPLES);
+    let mut market_tracker = LatencyTracker::new(TOTAL_SAMPLES);
 
-    let mut add_tracker = LatencyTracker::new(NUM_SAMPLES);
-    let mut cancel_tracker = LatencyTracker::new(NUM_SAMPLES);
-    let mut market_tracker = LatencyTracker::new(NUM_SAMPLES);
+    // Phases 1 and 2: repeatedly build and empty a 10,000-order book. Fixed
+    // batch size preserves the original clustered level density while giving
+    // tail percentiles one million observations.
+    let mut remaining_order_samples = TOTAL_SAMPLES;
+    let mut order_batch_index = 0u64;
 
-    // Phase 1: Benchmark add_order with clustered prices
-    let mut book = O::new();
-    let mut id_counter = IdCounter::new();
-    let mut order_ids = Vec::with_capacity(NUM_SAMPLES);
+    while remaining_order_samples > 0 {
+        let batch_size = remaining_order_samples.min(ORDERS_PER_BOOK);
+        let batch_seed = seed.wrapping_add(order_batch_index);
+        let mut rng = StdRng::seed_from_u64(batch_seed);
+        let mut book = O::new();
+        let mut id_counter = IdCounter::new();
+        let mut order_ids = Vec::with_capacity(batch_size);
 
-    for i in 0..NUM_SAMPLES {
-        let side = if i % 2 == 0 { Side::Bid } else { Side::Ask };
-        let price_value = generate_clustered_price(&mut rng);
+        // Phase 1: measure additions using the clustered price distribution.
+        for i in 0..batch_size {
+            let side = if i % 2 == 0 { Side::Bid } else { Side::Ask };
+            let price_value = generate_clustered_price(&mut rng);
+            let order = Order::new(
+                Price::define(price_value),
+                Quantity::define(ORDER_QUANTITY),
+                side,
+                &mut id_counter,
+            );
+            let order_id = order.id();
 
-        let order = Order::new(
-            Price::define(price_value),
-            Quantity::define(100),
-            side,
-            &mut id_counter,
-        );
-        let order_id = order.id();
+            add_tracker.record(|| {
+                book.add_order(order).expect("Failed to add order");
+            });
+            order_ids.push(order_id);
+        }
 
-        add_tracker.record(|| {
+        // Phase 2: measure cancellation of the same orders in random order.
+        order_ids.shuffle(&mut rng);
+        for order_id in order_ids {
+            cancel_tracker.record(|| {
+                book.cancel_order(order_id).expect("Failed to cancel order");
+            });
+        }
+
+        remaining_order_samples -= batch_size;
+        order_batch_index += 1;
+    }
+
+    // Phase 3: repeatedly populate an independent clustered ask book, measure
+    // 100 market buys, and reset before its density changes materially.
+    let mut remaining_market_samples = TOTAL_SAMPLES;
+    let mut market_batch_index = 0u64;
+
+    while remaining_market_samples > 0 {
+        let batch_seed = seed
+            .wrapping_add(MARKET_SEED_OFFSET)
+            .wrapping_add(market_batch_index);
+        let mut rng = StdRng::seed_from_u64(batch_seed);
+        let mut book = O::new();
+        let mut id_counter = IdCounter::new();
+
+        for _ in 0..MARKET_ORDERS_PER_BOOK {
+            let price_value = generate_clustered_price(&mut rng);
+            let order = Order::new(
+                Price::define(price_value),
+                Quantity::define(ORDER_QUANTITY),
+                Side::Ask,
+                &mut id_counter,
+            );
             book.add_order(order).expect("Failed to add order");
-        });
+        }
 
-        order_ids.push(order_id);
+        let batch_size = remaining_market_samples.min(MARKET_SAMPLES_PER_BOOK);
+        for _ in 0..batch_size {
+            market_tracker.record(|| {
+                book.execute_market_order(Side::Bid, Quantity::define(ORDER_QUANTITY))
+                    .expect("Failed to execute market order");
+            });
+        }
+
+        remaining_market_samples -= batch_size;
+        market_batch_index += 1;
     }
 
-    // Phase 2: Cancel in random order
-    order_ids.shuffle(&mut rng);
-
-    for &order_id in &order_ids {
-        cancel_tracker.record(|| {
-            book.cancel_order(order_id).expect("Failed to cancel order");
-        });
-    }
-
-    // Phase 3: Market orders on clustered book
-    let mut book = O::new();
-    let mut id_counter = IdCounter::new();
-
-    // Populate with clustered asks
-    for _ in 0..200 {
-        let price_value = generate_clustered_price(&mut rng);
-        let order = Order::new(
-            Price::define(price_value),
-            Quantity::define(100),
-            Side::Ask,
-            &mut id_counter,
-        );
-        book.add_order(order).expect("Failed to add order");
-    }
-
-    for _ in 0..100 {
-        market_tracker.record(|| {
-            let _ = book.execute_market_order(Side::Bid, Quantity::define(100));
-        });
-    }
+    debug_assert_eq!(add_tracker.len(), TOTAL_SAMPLES);
+    debug_assert_eq!(cancel_tracker.len(), TOTAL_SAMPLES);
+    debug_assert_eq!(market_tracker.len(), TOTAL_SAMPLES);
 
     ScenarioResults {
         add_order: add_tracker.precentiles().expect("No add_order samples"),
@@ -315,5 +352,4 @@ fn print_comparison(
         hybrid.market_order.p50,
         tree.market_order.p50
     );
-
 }
