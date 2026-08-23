@@ -1,7 +1,7 @@
 use orderbook::analysis::{CsvExporter, ResultRow};
 use orderbook::orderbook::OrderbookTrait;
 use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
-/// Latency benchmark for orderbook implementations
+/// Baseline latency benchmark for orderbook implementations
 ///
 /// Measures the latency of three core operations:
 /// 1. add_order() - Adding a limit order to the book

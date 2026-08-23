@@ -20,3 +20,59 @@ libc = "0.2"
 #analysis
 csv = "1.4.0"
 proptest = "1.9.0"
+
+# Baseline benchmark
+[[example]]
+name = "bench_latency"
+path = "examples/baseline/bench_latency.rs"
+
+# Phase 4.1: price-distribution and locality scenarios
+[[example]]
+name = "scenario_uniform"
+path = "examples/distribution/scenario_uniform.rs"
+
+[[example]]
+name = "scenario_clustered"
+path = "examples/distribution/scenario_clustered.rs"
+
+[[example]]
+name = "scenario_zipfian"
+path = "examples/distribution/scenario_zipfian.rs"
+
+[[example]]
+name = "scenario_bursty"
+path = "examples/distribution/scenario_bursty.rs"
+
+# Phase 4.2: operational and book-state scenarios
+[[example]]
+name = "scenario_high_cancel"
+path = "examples/operational/scenario_high_cancel.rs"
+
+[[example]]
+name = "scenario_sweep"
+path = "examples/operational/scenario_sweep.rs"
+
+[[example]]
+name = "scenario_buildup"
+path = "examples/operational/scenario_buildup.rs"
+
+[[example]]
+name = "scenario_steady_state"
+path = "examples/operational/scenario_steady_state.rs"
+
+# Phase 5: isolated optimization experiments
+[[example]]
+name = "bench_alignment"
+path = "examples/optimizations/bench_alignment.rs"
+
+[[example]]
+name = "bench_market_order"
+path = "examples/optimizations/bench_market_order.rs"
+
+[[example]]
+name = "bench_hugepages"
+path = "examples/optimizations/bench_hugepages.rs"
+
+[[example]]
+name = "bench_prefetch"
+path = "examples/optimizations/bench_prefetch.rs"
