@@ -178,94 +178,84 @@ impl OrderbookTrait for Orderbook {
         match side {
             // Market BUY: consume asks (lowest price first)
             Side::Bid => {
-                // First, consume from hot zone
-                for i in 0..HOT_ZONE_SIZE {
-                    if quantity.value() == 0 {
+                while quantity.value() > 0 {
+                    // best_ask compares the lowest hot and cold prices, so the
+                    // selected level always has global price priority.
+                    let Some(price) = self.best_ask() else {
                         break;
-                    }
-                    if self.hot_asks[i].orders.is_empty() {
-                        continue;
-                    }
+                    };
+                    let price_value = price.value();
 
-                    let price_value = self.hot_zone_center - HOT_ZONE_RADIUS as u32 + i as u32;
-                    let price = Price::define(price_value);
-                    let level_fills = Self::match_level(
-                        &mut self.hot_asks[i],
-                        &mut quantity,
-                        price,
-                        &mut self.order_index,
-                    );
-                    fills.extend(level_fills);
-                }
-
-                // Then, consume from cold zone if needed
-                if quantity.value() > 0 {
-                    let mut empty_levels = Vec::new();
-                    for (&price_value, level) in self.cold_asks.iter_mut() {
-                        if quantity.value() == 0 {
-                            break;
-                        }
-
-                        let price = Price::define(price_value);
-                        let level_fills =
-                            Self::match_level(level, &mut quantity, price, &mut self.order_index);
+                    if self.is_in_hot_zone(price_value) {
+                        let idx = self.hot_zone_index(price_value);
+                        let level_fills = Self::match_level(
+                            &mut self.hot_asks[idx],
+                            &mut quantity,
+                            price,
+                            &mut self.order_index,
+                        );
+                        fills.extend(level_fills);
+                    } else {
+                        let (level_fills, level_is_empty) = {
+                            let level = self
+                                .cold_asks
+                                .get_mut(&price_value)
+                                .expect("best cold ask must exist");
+                            let level_fills = Self::match_level(
+                                level,
+                                &mut quantity,
+                                price,
+                                &mut self.order_index,
+                            );
+                            (level_fills, level.orders.is_empty())
+                        };
                         fills.extend(level_fills);
 
-                        if level.orders.is_empty() {
-                            empty_levels.push(price_value);
+                        if level_is_empty {
+                            self.cold_asks.remove(&price_value);
                         }
-                    }
-
-                    // Clean up empty cold levels
-                    for price_value in empty_levels {
-                        self.cold_asks.remove(&price_value);
                     }
                 }
             }
 
             // Market SELL: consume bids (highest price first)
             Side::Ask => {
-                // First, consume from hot zone (highest first)
-                for i in (0..HOT_ZONE_SIZE).rev() {
-                    if quantity.value() == 0 {
+                while quantity.value() > 0 {
+                    // best_bid compares the highest hot and cold prices, so the
+                    // selected level always has global price priority.
+                    let Some(price) = self.best_bid() else {
                         break;
-                    }
-                    if self.hot_bids[i].orders.is_empty() {
-                        continue;
-                    }
+                    };
+                    let price_value = price.value();
 
-                    let price_value = self.hot_zone_center - HOT_ZONE_RADIUS as u32 + i as u32;
-                    let price = Price::define(price_value);
-                    let level_fills = Self::match_level(
-                        &mut self.hot_bids[i],
-                        &mut quantity,
-                        price,
-                        &mut self.order_index,
-                    );
-                    fills.extend(level_fills);
-                }
-
-                // Then, consume from cold zone if needed
-                if quantity.value() > 0 {
-                    let mut empty_levels = Vec::new();
-                    for (&price_value, level) in self.cold_bids.iter_mut().rev() {
-                        if quantity.value() == 0 {
-                            break;
-                        }
-
-                        let price = Price::define(price_value);
-                        let level_fills =
-                            Self::match_level(level, &mut quantity, price, &mut self.order_index);
+                    if self.is_in_hot_zone(price_value) {
+                        let idx = self.hot_zone_index(price_value);
+                        let level_fills = Self::match_level(
+                            &mut self.hot_bids[idx],
+                            &mut quantity,
+                            price,
+                            &mut self.order_index,
+                        );
+                        fills.extend(level_fills);
+                    } else {
+                        let (level_fills, level_is_empty) = {
+                            let level = self
+                                .cold_bids
+                                .get_mut(&price_value)
+                                .expect("best cold bid must exist");
+                            let level_fills = Self::match_level(
+                                level,
+                                &mut quantity,
+                                price,
+                                &mut self.order_index,
+                            );
+                            (level_fills, level.orders.is_empty())
+                        };
                         fills.extend(level_fills);
 
-                        if level.orders.is_empty() {
-                            empty_levels.push(price_value);
+                        if level_is_empty {
+                            self.cold_bids.remove(&price_value);
                         }
-                    }
-
-                    // Clean up empty cold levels
-                    for price_value in empty_levels {
-                        self.cold_bids.remove(&price_value);
                     }
                 }
             }
@@ -283,15 +273,16 @@ impl OrderbookTrait for Orderbook {
 
     fn best_bid(&self) -> Option<Price> {
         // Best bid = highest bid across both zones.
-        let hot = (0..HOT_ZONE_SIZE).rev()
+        let hot = (0..HOT_ZONE_SIZE)
+            .rev()
             .find(|&i| !self.hot_bids[i].orders.is_empty())
             .map(|i| self.hot_zone_center - HOT_ZONE_RADIUS as u32 + i as u32);
         let cold = self.cold_bids.last_key_value().map(|(&p, _)| p);
         match (hot, cold) {
             (Some(h), Some(c)) => Some(Price::define(h.max(c))),
-            (Some(h), None)    => Some(Price::define(h)),
-            (None,    Some(c)) => Some(Price::define(c)),
-            (None,    None)    => None,
+            (Some(h), None) => Some(Price::define(h)),
+            (None, Some(c)) => Some(Price::define(c)),
+            (None, None) => None,
         }
     }
 
@@ -303,9 +294,9 @@ impl OrderbookTrait for Orderbook {
         let cold = self.cold_asks.first_key_value().map(|(&p, _)| p);
         match (hot, cold) {
             (Some(h), Some(c)) => Some(Price::define(h.min(c))),
-            (Some(h), None)    => Some(Price::define(h)),
-            (None,    Some(c)) => Some(Price::define(c)),
-            (None,    None)    => None,
+            (Some(h), None) => Some(Price::define(h)),
+            (None, Some(c)) => Some(Price::define(c)),
+            (None, None) => None,
         }
     }
 
@@ -403,5 +394,59 @@ impl Level {
             .iter()
             .map(|o| o.quantity().value())
             .sum::<u32>()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn add_order(
+        book: &mut Orderbook,
+        id_counter: &mut crate::types::order::IdCounter,
+        side: Side,
+        price: u32,
+    ) {
+        let order = Order::new(
+            Price::define(price),
+            Quantity::define(100),
+            side,
+            id_counter,
+        );
+        book.add_order(order).expect("test order should be valid");
+    }
+
+    #[test]
+    fn market_buy_merges_hot_and_cold_asks_by_price() {
+        let mut book = Orderbook::new();
+        let mut id_counter = crate::types::order::IdCounter::new();
+
+        add_order(&mut book, &mut id_counter, Side::Ask, 7_000);
+        add_order(&mut book, &mut id_counter, Side::Ask, 5_000);
+        add_order(&mut book, &mut id_counter, Side::Ask, 1_000);
+
+        let fills = book
+            .execute_market_order(Side::Bid, Quantity::define(300))
+            .expect("book has sufficient ask liquidity");
+        let fill_prices: Vec<u32> = fills.iter().map(|fill| fill.price.value()).collect();
+
+        assert_eq!(fill_prices, vec![1_000, 5_000, 7_000]);
+    }
+
+    #[test]
+    fn market_sell_merges_hot_and_cold_bids_by_price() {
+        let mut book = Orderbook::new();
+        let mut id_counter = crate::types::order::IdCounter::new();
+
+        add_order(&mut book, &mut id_counter, Side::Bid, 3_000);
+        add_order(&mut book, &mut id_counter, Side::Bid, 5_000);
+        add_order(&mut book, &mut id_counter, Side::Bid, 8_000);
+
+        let fills = book
+            .execute_market_order(Side::Ask, Quantity::define(300))
+            .expect("book has sufficient bid liquidity");
+        let fill_prices: Vec<u32> = fills.iter().map(|fill| fill.price.value()).collect();
+
+        assert_eq!(fill_prices, vec![8_000, 5_000, 3_000]);
     }
 }

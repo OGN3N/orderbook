@@ -8,7 +8,7 @@ use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 /// 2. cancel_order() - Canceling an existing order
 /// 3. execute_market_order() - Executing a market order
 ///
-/// Run with: cargo run --release --example benchmark_latency
+/// Run with: cargo run --release --example bench_latency
 use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook;
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
@@ -18,7 +18,10 @@ use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
 
-const NUM_SAMPLES: usize = 10_000;
+const NUM_SAMPLES: usize = 1_000_000;
+const MARKET_BOOK_ORDERS: usize = 200;
+const MARKET_SAMPLES_PER_BOOK: usize = 100;
+const ORDER_QUANTITY: u32 = 100;
 
 fn main() {
     println!("=== Orderbook Latency Benchmark ===\n");
@@ -146,30 +149,36 @@ fn benchmark_orderbook<O: OrderbookTrait>() -> BenchmarkResults {
         });
     }
 
-    // Benchmark execute_market_order
-    // First, repopulate the book
-    let mut book = O::new();
-    let mut id_counter = IdCounter::new();
+    // Benchmark execute_market_order. Rebuild the original 200-level workload
+    // after every 100 samples so one million executions have enough liquidity
+    // without generating prices outside the valid [1, 10000) range.
+    let mut remaining_samples = NUM_SAMPLES;
 
-    // Add 200 ask orders with NO GAPS - fills every slot in hot zone [4900, 5100)
-    // This tests Hybrid's best case: fully populated hot zone
-    for i in 0..200 {
-        let price_value = 4900 + i; // Prices: 4900, 4901, 4902, ..., 5099
-        let order = Order::new(
-            Price::define(price_value),
-            Quantity::define(100),
-            Side::Ask,
-            &mut id_counter,
-        );
-        book.add_order(order).expect("Failed to add order");
-    }
+    while remaining_samples > 0 {
+        let mut book = O::new();
+        let mut id_counter = IdCounter::new();
 
-    // Execute 100 market buy orders
-    for _ in 0..100 {
-        market_tracker.record(|| {
-            book.execute_market_order(Side::Bid, Quantity::define(100))
-                .expect("Failed to execute market order");
-        });
+        // Fill every slot in Hybrid's hot zone [4900, 5100).
+        for i in 0..MARKET_BOOK_ORDERS {
+            let price_value = 4900 + i as u32;
+            let order = Order::new(
+                Price::define(price_value),
+                Quantity::define(ORDER_QUANTITY),
+                Side::Ask,
+                &mut id_counter,
+            );
+            book.add_order(order).expect("Failed to add order");
+        }
+
+        let samples_this_book = remaining_samples.min(MARKET_SAMPLES_PER_BOOK);
+        for _ in 0..samples_this_book {
+            market_tracker.record(|| {
+                book.execute_market_order(Side::Bid, Quantity::define(ORDER_QUANTITY))
+                    .expect("Failed to execute market order");
+            });
+        }
+
+        remaining_samples -= samples_this_book;
     }
 
     BenchmarkResults {

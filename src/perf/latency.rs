@@ -1,4 +1,4 @@
-use super::rdtsc;
+use super::{rdtsc, rdtsc_end, rdtsc_start};
 
 /// Get CPU frequency from /proc/cpuinfo (Linux only)
 /// Returns frequency in GHz, or None if not available
@@ -74,9 +74,9 @@ impl LatencyTracker {
     where
         F: FnOnce() -> R,
     {
-        let start = rdtsc();
+        let start = rdtsc_start();
         let result = op();
-        let end = rdtsc();
+        let end = rdtsc_end();
 
         self.samples.push(end - start);
 

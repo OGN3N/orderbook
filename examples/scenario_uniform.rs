@@ -1,22 +1,26 @@
+use orderbook::analysis::{CsvExporter, ResultRow};
+use orderbook::orderbook::OrderbookTrait;
+use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook;
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
-use orderbook::orderbook::OrderbookTrait;
-use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
 use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
 use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
-use orderbook::analysis::{CsvExporter, ResultRow};
+use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 
-const NUM_SAMPLES: usize = 10_000;
+const TOTAL_SAMPLES: usize = 1_000_000;
+const ORDERS_PER_BOOK: usize = 10_000;
+const MARKET_ORDERS_PER_BOOK: usize = 200;
+const MARKET_SAMPLES_PER_BOOK: usize = 100;
+const ORDER_QUANTITY: u32 = 100;
+const MARKET_SEED_OFFSET: u64 = 1_000_000;
 const PRICE_RANGE_MIN: u32 = 1;
 const PRICE_RANGE_MAX: u32 = 10_000;
-
 
 fn main() {
     println!("=== Scenario 4.1a: Uniform Random Distribution ===\n");
@@ -51,8 +55,8 @@ fn main() {
 // PURPOSE: Test worst-case TLB/cache behavior
 //
 // WHAT IT DOES:
-// - Generates orders with prices uniformly distributed across the FULL price
-//   range (0 to 10,000)
+// - Generates orders with prices uniformly distributed across the FULL valid
+//   price range [1, 10,000)
 // - Each price has equal probability of being selected
 // - Cancellations happen in random order (not FIFO)
 //
@@ -78,8 +82,14 @@ fn main() {
 
 fn run_scenario_uniform_random(cpu_ghz: f64) {
     println!("=== Scenario 4.1a: Uniform Random Distribution ===");
-    println!("Random prices across full range [0, 10000]");
-    println!("Tests worst-case TLB/cache behavior\n");
+    println!("Random prices across valid range [1, 10000)");
+    println!("Tests worst-case TLB/cache behavior");
+    println!("Measurements per operation: {}", TOTAL_SAMPLES);
+    println!("Orders per add/cancel book: {}", ORDERS_PER_BOOK);
+    println!(
+        "Market workload per book: {} asks, {} measured buys\n",
+        MARKET_ORDERS_PER_BOOK, MARKET_SAMPLES_PER_BOOK
+    );
 
     // Use fixed seed for reproducibility
     let seed: u64 = 42;
@@ -140,72 +150,95 @@ struct ScenarioResults {
 }
 
 fn scenario_uniform_random<O: OrderbookTrait>(seed: u64) -> ScenarioResults {
-    let mut rng = StdRng::seed_from_u64(seed);
+    let mut add_tracker = LatencyTracker::new(TOTAL_SAMPLES);
+    let mut cancel_tracker = LatencyTracker::new(TOTAL_SAMPLES);
+    let mut market_tracker = LatencyTracker::new(TOTAL_SAMPLES);
 
-    let mut add_tracker = LatencyTracker::new(NUM_SAMPLES);
-    let mut cancel_tracker = LatencyTracker::new(NUM_SAMPLES);
-    let mut market_tracker = LatencyTracker::new(NUM_SAMPLES);
+    // Phases 1 and 2: repeatedly build and empty a 10,000-order book. Keeping
+    // the book size fixed preserves the original sparse uniform workload while
+    // collecting enough observations for stable tail percentiles.
+    let mut remaining_order_samples = TOTAL_SAMPLES;
+    let mut order_batch_index = 0u64;
 
-    // Phase 1: Benchmark add_order with uniform random prices
-    let mut book = O::new();
-    let mut id_counter = IdCounter::new();
-    let mut order_ids = Vec::with_capacity(NUM_SAMPLES);
+    while remaining_order_samples > 0 {
+        let batch_size = remaining_order_samples.min(ORDERS_PER_BOOK);
+        let batch_seed = seed.wrapping_add(order_batch_index);
+        let mut rng = StdRng::seed_from_u64(batch_seed);
+        let mut book = O::new();
+        let mut id_counter = IdCounter::new();
+        let mut order_ids = Vec::with_capacity(batch_size);
 
-    for i in 0..NUM_SAMPLES {
-        let side = if i % 2 == 0 { Side::Bid } else { Side::Ask };
+        // Phase 1: measure additions at uniformly random prices. Side still
+        // alternates, producing equal bid and ask counts in every full batch.
+        for i in 0..batch_size {
+            let side = if i % 2 == 0 { Side::Bid } else { Side::Ask };
+            let price_value = rng.random_range(PRICE_RANGE_MIN..PRICE_RANGE_MAX);
+            let order = Order::new(
+                Price::define(price_value),
+                Quantity::define(ORDER_QUANTITY),
+                side,
+                &mut id_counter,
+            );
+            let order_id = order.id();
 
-        // Uniform random price across full range
-        let price_value = rng.random_range(PRICE_RANGE_MIN..PRICE_RANGE_MAX);
+            add_tracker.record(|| {
+                book.add_order(order).expect("Failed to add order");
+            });
+            order_ids.push(order_id);
+        }
 
-        let order = Order::new(
-            Price::define(price_value),
-            Quantity::define(100),
-            side,
-            &mut id_counter,
-        );
-        let order_id = order.id();
+        // Phase 2: measure cancellation of the same orders in random order.
+        order_ids.shuffle(&mut rng);
+        for order_id in order_ids {
+            cancel_tracker.record(|| {
+                book.cancel_order(order_id).expect("Failed to cancel order");
+            });
+        }
 
-        add_tracker.record(|| {
+        remaining_order_samples -= batch_size;
+        order_batch_index += 1;
+    }
+
+    // Phase 3: each independent book starts with 200 uniformly distributed
+    // asks. We time 100 buys so every measured order has sufficient liquidity,
+    // then create a fresh book to preserve the original workload density.
+    let mut remaining_market_samples = TOTAL_SAMPLES;
+    let mut market_batch_index = 0u64;
+
+    while remaining_market_samples > 0 {
+        let batch_seed = seed
+            .wrapping_add(MARKET_SEED_OFFSET)
+            .wrapping_add(market_batch_index);
+        let mut rng = StdRng::seed_from_u64(batch_seed);
+        let mut book = O::new();
+        let mut id_counter = IdCounter::new();
+
+        for _ in 0..MARKET_ORDERS_PER_BOOK {
+            let price_value = rng.random_range(PRICE_RANGE_MIN..PRICE_RANGE_MAX);
+            let order = Order::new(
+                Price::define(price_value),
+                Quantity::define(ORDER_QUANTITY),
+                Side::Ask,
+                &mut id_counter,
+            );
             book.add_order(order).expect("Failed to add order");
-        });
+        }
 
-        order_ids.push(order_id);
+        let batch_size = remaining_market_samples.min(MARKET_SAMPLES_PER_BOOK);
+        for _ in 0..batch_size {
+            market_tracker.record(|| {
+                book.execute_market_order(Side::Bid, Quantity::define(ORDER_QUANTITY))
+                    .expect("Failed to execute market order");
+            });
+        }
+
+        remaining_market_samples -= batch_size;
+        market_batch_index += 1;
     }
 
-    // Phase 2: Benchmark cancel_order in RANDOM order (not FIFO)
-    // This stresses the order lookup mechanism
-    order_ids.shuffle(&mut rng);
-
-    for &order_id in &order_ids {
-        cancel_tracker.record(|| {
-            book.cancel_order(order_id).expect("Failed to cancel order");
-        });
-    }
-
-    // Phase 3: Benchmark market orders
-    // Repopulate the book with uniform random asks
-    // Each order has quantity 100, and market orders request exactly 100
-    // to avoid partial fill issues
-    let mut book = O::new();
-    let mut id_counter = IdCounter::new();
-
-    for _ in 0..200 {
-        let price_value = rng.random_range(PRICE_RANGE_MIN..PRICE_RANGE_MAX);
-        let order = Order::new(
-            Price::define(price_value),
-            Quantity::define(100),
-            Side::Ask,
-            &mut id_counter,
-        );
-        book.add_order(order).expect("Failed to add order");
-    }
-
-    // Execute market orders - request exactly 100 to match one order fully
-    for _ in 0..100 {
-        market_tracker.record(|| {
-            let _ = book.execute_market_order(Side::Bid, Quantity::define(100));
-        });
-    }
+    debug_assert_eq!(add_tracker.len(), TOTAL_SAMPLES);
+    debug_assert_eq!(cancel_tracker.len(), TOTAL_SAMPLES);
+    debug_assert_eq!(market_tracker.len(), TOTAL_SAMPLES);
 
     ScenarioResults {
         add_order: add_tracker.precentiles().expect("No add_order samples"),
@@ -260,7 +293,11 @@ fn print_comparison_table(
     println!("{:-<75}", "");
     println!(
         "{:<15} | {:>10} cy | {:>10} cy | {:>10} cy | {:>10} cy",
-        "add_order", fixed.add_order.p50, soa.add_order.p50, hybrid.add_order.p50, tree.add_order.p50
+        "add_order",
+        fixed.add_order.p50,
+        soa.add_order.p50,
+        hybrid.add_order.p50,
+        tree.add_order.p50
     );
     println!(
         "{:<15} | {:>10} cy | {:>10} cy | {:>10} cy | {:>10} cy",
@@ -278,5 +315,4 @@ fn print_comparison_table(
         hybrid.market_order.p50,
         tree.market_order.p50
     );
-
 }
