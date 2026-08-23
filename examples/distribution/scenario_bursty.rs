@@ -1,38 +1,44 @@
+use orderbook::analysis::{CsvExporter, ResultRow};
+use orderbook::orderbook::OrderbookTrait;
+use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 /// Scenario 4.1d: Bursty Traffic
 ///
-/// Periods of high activity followed by quiet periods
-/// Tests cache eviction under pressure
+/// Alternating high-volume/local and low-volume/wide-access phases
+/// Tests sensitivity to changing locality and operation mix
 ///
 /// Run with: cargo run --release --example scenario_bursty
 use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook;
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
-use orderbook::orderbook::OrderbookTrait;
-use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
 use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
 use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
-use orderbook::analysis::{CsvExporter, ResultRow};
+use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 
 const MID_PRICE: u32 = 5_000;
 
 // Burst parameters
 const BURST_SIZE: usize = 500; // Orders per burst
-const BURST_PRICE_RANGE: u32 = 20; // Tight range during burst (±10 ticks)
+const BURST_PRICE_RANGE: u32 = 20; // Width 20: offsets [-10, +9]
 const QUIET_SIZE: usize = 50; // Orders during quiet period
-const QUIET_PRICE_RANGE: u32 = 2000; // Wide range during quiet (±1000 ticks)
-const NUM_CYCLES: usize = 10; // Number of burst-quiet cycles
+const QUIET_PRICE_RANGE: u32 = 2000; // Width 2000: offsets [-1000, +999]
+const CYCLES_PER_BOOK: usize = 10;
+const ORDERS_PER_BOOK: usize = CYCLES_PER_BOOK * (BURST_SIZE + QUIET_SIZE);
+const TOTAL_SAMPLES: usize = 1_000_000;
+const MARKET_ORDERS_PER_BOOK: usize = 200;
+const MARKET_SAMPLES_PER_BOOK: usize = 100;
+const ORDER_QUANTITY: u32 = 100;
+const MARKET_SEED_OFFSET: u64 = 1_000_000;
 
 // ============================================================================
 // Scenario 4.1d: Bursty Traffic
 // ============================================================================
 //
-// PURPOSE: Test cache eviction under pressure
+// PURPOSE: Test sensitivity to alternating locality and volume patterns
 //
 // WHAT IT SIMULATES:
 // Real markets have bursts of activity:
@@ -45,18 +51,21 @@ const NUM_CYCLES: usize = 10; // Number of burst-quiet cycles
 // [BURST] -> [QUIET] -> [BURST] -> [QUIET] -> ...
 //
 // During BURST (500 orders):
-// - High rate of orders
-// - Tight price clustering (±10 ticks from mid)
+// - High-volume run of consecutive orders
+// - Tight price clustering (offsets -10 through +9 from a drifting center)
 // - Simulates everyone reacting to same event
 //
 // During QUIET (50 orders):
-// - Low rate of orders
-// - Wide price spread (±1000 ticks)
+// - Lower-volume run of consecutive orders
+// - Wide price spread (offsets -1000 through +999 from mid)
 // - Simulates normal market-making activity
 //
+// This is an access-pattern model. It does not introduce wall-clock delays or
+// model network arrival rate between operations.
+//
 // WHY IT MATTERS:
-// 1. Cache Thrashing: Burst fills L1/L2 cache with hot prices. Quiet period
-//    accesses cold prices, evicting the cached data. Next burst must re-warm.
+// 1. Locality Shift: Burst repeatedly accesses hot prices. The quiet phase
+//    touches sparse prices, so the next burst may need to re-warm hot data.
 //
 // 2. Memory Allocator: Rapid allocations during burst may trigger different
 //    allocator code paths than steady allocation.
@@ -93,10 +102,19 @@ fn main() {
         }
     }
 
-    println!("\nPattern: {} cycles of [BURST({}) -> QUIET({})]", NUM_CYCLES, BURST_SIZE, QUIET_SIZE);
-    println!("  Burst: {} orders in ±{} ticks", BURST_SIZE, BURST_PRICE_RANGE / 2);
-    println!("  Quiet: {} orders in ±{} ticks", QUIET_SIZE, QUIET_PRICE_RANGE / 2);
-    println!("  Total: {} orders\n", NUM_CYCLES * (BURST_SIZE + QUIET_SIZE));
+    println!(
+        "\nPattern per add/cancel book: {} cycles of [BURST({}) -> QUIET({})]",
+        CYCLES_PER_BOOK, BURST_SIZE, QUIET_SIZE
+    );
+    println!("  Burst offsets: -10 through +9 ticks from drifting center");
+    println!("  Quiet offsets: -1000 through +999 ticks from mid");
+    println!("  Orders per add/cancel book: {}", ORDERS_PER_BOOK);
+    println!("  Measurements per operation: {}", TOTAL_SAMPLES);
+    println!(
+        "  Market workload per book: {} asks, {} measured buys",
+        MARKET_ORDERS_PER_BOOK, MARKET_SAMPLES_PER_BOOK
+    );
+    println!("  Timing model: consecutive operations; no artificial sleeps\n");
 
     let seed: u64 = 42;
 
@@ -159,93 +177,137 @@ struct ScenarioResults {
 }
 
 fn scenario_bursty<O: OrderbookTrait>(seed: u64) -> ScenarioResults {
-    let mut rng = StdRng::seed_from_u64(seed);
+    let mut add_tracker = LatencyTracker::new(TOTAL_SAMPLES);
+    let mut cancel_tracker = LatencyTracker::new(TOTAL_SAMPLES);
+    let mut market_tracker = LatencyTracker::new(TOTAL_SAMPLES);
 
-    let total_orders = NUM_CYCLES * (BURST_SIZE + QUIET_SIZE);
-    let mut add_tracker = LatencyTracker::new(total_orders);
-    let mut cancel_tracker = LatencyTracker::new(total_orders);
-    let mut market_tracker = LatencyTracker::new(200);
+    // Phases 1 and 2: repeat the original ten-cycle burst/quiet book. The last
+    // book may contain a partial final pattern so the aggregate is exactly one
+    // million samples without allowing a single book to grow artificially.
+    let mut remaining_order_samples = TOTAL_SAMPLES;
+    let mut order_batch_index = 0u64;
 
-    let mut book = O::new();
-    let mut id_counter = IdCounter::new();
-    let mut order_ids = Vec::with_capacity(total_orders);
+    while remaining_order_samples > 0 {
+        let batch_size = remaining_order_samples.min(ORDERS_PER_BOOK);
+        let batch_seed = seed.wrapping_add(order_batch_index);
+        let mut rng = StdRng::seed_from_u64(batch_seed);
+        let mut book = O::new();
+        let mut id_counter = IdCounter::new();
+        let mut order_ids = Vec::with_capacity(batch_size);
+        let mut generated = 0usize;
 
-    // Phase 1: Add orders in burst-quiet cycles
-    for cycle in 0..NUM_CYCLES {
-        // BURST phase: tight clustering around mid
-        let burst_center = MID_PRICE + (cycle as u32 * 10) % 100; // Slight drift each cycle
-        for i in 0..BURST_SIZE {
-            let side = if i % 2 == 0 { Side::Bid } else { Side::Ask };
-            let offset = rng.random_range(0..BURST_PRICE_RANGE);
-            let price_value = (burst_center - BURST_PRICE_RANGE / 2 + offset).clamp(1, 9999);
+        // Phase 1: alternate high-volume/local and low-volume/wide additions.
+        for cycle in 0..CYCLES_PER_BOOK {
+            let burst_center = MID_PRICE + (cycle as u32 * 10) % 100;
+            let burst_count = (batch_size - generated).min(BURST_SIZE);
 
-            let order = Order::new(
-                Price::define(price_value),
-                Quantity::define(100),
-                side,
-                &mut id_counter,
-            );
-            let order_id = order.id();
+            for _ in 0..burst_count {
+                let side = if generated % 2 == 0 {
+                    Side::Bid
+                } else {
+                    Side::Ask
+                };
+                let offset = rng.random_range(0..BURST_PRICE_RANGE);
+                let price_value = (burst_center - BURST_PRICE_RANGE / 2 + offset).clamp(1, 9999);
+                let order = Order::new(
+                    Price::define(price_value),
+                    Quantity::define(ORDER_QUANTITY),
+                    side,
+                    &mut id_counter,
+                );
+                let order_id = order.id();
 
-            add_tracker.record(|| {
-                book.add_order(order).expect("Failed to add order");
-            });
+                add_tracker.record(|| {
+                    book.add_order(order).expect("Failed to add order");
+                });
+                order_ids.push(order_id);
+                generated += 1;
+            }
 
-            order_ids.push(order_id);
+            if generated == batch_size {
+                break;
+            }
+
+            let quiet_count = (batch_size - generated).min(QUIET_SIZE);
+            for _ in 0..quiet_count {
+                let side = if generated % 2 == 0 {
+                    Side::Bid
+                } else {
+                    Side::Ask
+                };
+                let offset = rng.random_range(0..QUIET_PRICE_RANGE);
+                let price_value = (MID_PRICE - QUIET_PRICE_RANGE / 2 + offset).clamp(1, 9999);
+                let order = Order::new(
+                    Price::define(price_value),
+                    Quantity::define(ORDER_QUANTITY),
+                    side,
+                    &mut id_counter,
+                );
+                let order_id = order.id();
+
+                add_tracker.record(|| {
+                    book.add_order(order).expect("Failed to add order");
+                });
+                order_ids.push(order_id);
+                generated += 1;
+            }
+
+            if generated == batch_size {
+                break;
+            }
         }
 
-        // QUIET phase: wide spread, sparse
-        for i in 0..QUIET_SIZE {
-            let side = if i % 2 == 0 { Side::Bid } else { Side::Ask };
-            let offset = rng.random_range(0..QUIET_PRICE_RANGE);
-            let price_value = (MID_PRICE - QUIET_PRICE_RANGE / 2 + offset).clamp(1, 9999);
+        // Phase 2: cancel the same book in random order.
+        order_ids.shuffle(&mut rng);
+        for order_id in order_ids {
+            cancel_tracker.record(|| {
+                book.cancel_order(order_id).expect("Failed to cancel order");
+            });
+        }
 
+        remaining_order_samples -= batch_size;
+        order_batch_index += 1;
+    }
+
+    // Phase 3: retain the original tightly clustered market workload and reset
+    // every 100 measured buys so every operation has sufficient liquidity.
+    let mut remaining_market_samples = TOTAL_SAMPLES;
+    let mut market_batch_index = 0u64;
+
+    while remaining_market_samples > 0 {
+        let batch_seed = seed
+            .wrapping_add(MARKET_SEED_OFFSET)
+            .wrapping_add(market_batch_index);
+        let mut rng = StdRng::seed_from_u64(batch_seed);
+        let mut book = O::new();
+        let mut id_counter = IdCounter::new();
+
+        for _ in 0..MARKET_ORDERS_PER_BOOK {
+            let price_value = MID_PRICE - 10 + rng.random_range(0..20);
             let order = Order::new(
                 Price::define(price_value),
-                Quantity::define(100),
-                side,
+                Quantity::define(ORDER_QUANTITY),
+                Side::Ask,
                 &mut id_counter,
             );
-            let order_id = order.id();
-
-            add_tracker.record(|| {
-                book.add_order(order).expect("Failed to add order");
-            });
-
-            order_ids.push(order_id);
+            book.add_order(order).expect("Failed to add order");
         }
+
+        let batch_size = remaining_market_samples.min(MARKET_SAMPLES_PER_BOOK);
+        for _ in 0..batch_size {
+            market_tracker.record(|| {
+                book.execute_market_order(Side::Bid, Quantity::define(ORDER_QUANTITY))
+                    .expect("Failed to execute market order");
+            });
+        }
+
+        remaining_market_samples -= batch_size;
+        market_batch_index += 1;
     }
 
-    // Phase 2: Cancel in random order (simulates chaotic cancellation patterns)
-    order_ids.shuffle(&mut rng);
-
-    for &order_id in &order_ids {
-        cancel_tracker.record(|| {
-            book.cancel_order(order_id).expect("Failed to cancel order");
-        });
-    }
-
-    // Phase 3: Market orders with burst pattern
-    let mut book = O::new();
-    let mut id_counter = IdCounter::new();
-
-    // Populate with burst-like pattern
-    for _ in 0..200 {
-        let price_value = MID_PRICE - 10 + rng.random_range(0..20);
-        let order = Order::new(
-            Price::define(price_value),
-            Quantity::define(100),
-            Side::Ask,
-            &mut id_counter,
-        );
-        book.add_order(order).expect("Failed to add order");
-    }
-
-    for _ in 0..100 {
-        market_tracker.record(|| {
-            let _ = book.execute_market_order(Side::Bid, Quantity::define(100));
-        });
-    }
+    debug_assert_eq!(add_tracker.len(), TOTAL_SAMPLES);
+    debug_assert_eq!(cancel_tracker.len(), TOTAL_SAMPLES);
+    debug_assert_eq!(market_tracker.len(), TOTAL_SAMPLES);
 
     ScenarioResults {
         add_order: add_tracker.precentiles().expect("No add_order samples"),
@@ -361,7 +423,11 @@ fn print_variance(
     println!("{:-<75}", "");
 
     let ratio = |p99: u64, p50: u64| -> f64 {
-        if p50 == 0 { 0.0 } else { p99 as f64 / p50 as f64 }
+        if p50 == 0 {
+            0.0
+        } else {
+            p99 as f64 / p50 as f64
+        }
     };
 
     println!(
@@ -388,5 +454,4 @@ fn print_variance(
         ratio(hybrid.market_order.p99, hybrid.market_order.p50),
         ratio(tree.market_order.p99, tree.market_order.p50),
     );
-
 }

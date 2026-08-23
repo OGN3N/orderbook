@@ -233,7 +233,10 @@ fn execute_optimized(
 
 // --- Benchmark harness ---
 
-fn build_book(num_levels: usize, orders_per_level: usize) -> (Vec<Level>, std::collections::HashMap<OrderId, u32>) {
+fn build_book(
+    num_levels: usize,
+    orders_per_level: usize,
+) -> (Vec<Level>, std::collections::HashMap<OrderId, u32>) {
     let mut asks = Vec::with_capacity(num_levels + 5000); // Space for price slots
     let mut order_index = std::collections::HashMap::new();
 
@@ -246,7 +249,10 @@ fn build_book(num_levels: usize, orders_per_level: usize) -> (Vec<Level>, std::c
     for _ in 0..num_levels {
         let mut level = Level::new();
         for _ in 0..orders_per_level {
-            let order = Order { id, quantity: ORDER_QTY };
+            let order = Order {
+                id,
+                quantity: ORDER_QTY,
+            };
             order_index.insert(id, ORDER_QTY);
             level.orders.push(order);
             id += 1;
@@ -313,7 +319,8 @@ fn main() {
             let (mut asks, mut order_index) = build_book(NUM_LEVELS, ORDERS_PER_LEVEL);
             let mut best_ask_idx = Some(5000usize); // Known starting position
             optimized_tracker.record(|| {
-                let _fills = execute_optimized(&mut asks, sweep_qty, &mut order_index, &mut best_ask_idx);
+                let _fills =
+                    execute_optimized(&mut asks, sweep_qty, &mut order_index, &mut best_ask_idx);
                 std::hint::black_box(&_fills);
             });
         }
@@ -407,18 +414,23 @@ fn main() {
     let dc = deep_current.precentiles().unwrap();
     let do_ = deep_optimized.precentiles().unwrap();
 
-    println!(
-        "{:<10} | {:>14} | {:>14}",
-        "Metric", "Current", "Optimized"
-    );
+    println!("{:<10} | {:>14} | {:>14}", "Metric", "Current", "Optimized");
     println!("{:-<45}", "");
     println!(
         "{:<10} | {:>8} cy {:>3.0}ns | {:>8} cy {:>3.0}ns",
-        "p50", dc.p50, cycles_to_ns(dc.p50, cpu_ghz), do_.p50, cycles_to_ns(do_.p50, cpu_ghz)
+        "p50",
+        dc.p50,
+        cycles_to_ns(dc.p50, cpu_ghz),
+        do_.p50,
+        cycles_to_ns(do_.p50, cpu_ghz)
     );
     println!(
         "{:<10} | {:>8} cy {:>3.0}ns | {:>8} cy {:>3.0}ns",
-        "p99", dc.p99, cycles_to_ns(dc.p99, cpu_ghz), do_.p99, cycles_to_ns(do_.p99, cpu_ghz)
+        "p99",
+        dc.p99,
+        cycles_to_ns(dc.p99, cpu_ghz),
+        do_.p99,
+        cycles_to_ns(do_.p99, cpu_ghz)
     );
     let deep_speedup = dc.p50 as f64 / do_.p50.max(1) as f64;
     println!("  Speedup: {:.1}x", deep_speedup);
@@ -426,10 +438,18 @@ fn main() {
     println!("\n--- Optimization Summary ---\n");
     println!("Optimization               | What it fixes                          | Impact");
     println!("{:-<85}", "");
-    println!("best_ask_idx tracking       | Skips scan of 5000 empty slots         | ~{:.0} cy saved on every call",
-        sc.p50.saturating_sub(so.p50));
-    println!("Pre-allocated fills Vec     | Eliminates 2 allocs per price level    | Reduces alloc overhead");
-    println!("drain(..n) vs N×remove(0)   | ONE memmove vs N memmoves              | {:.1}x on deep levels",
-        deep_speedup);
-    println!("Inlined match logic         | No function call boundary              | Better register use");
+    println!(
+        "best_ask_idx tracking       | Skips scan of 5000 empty slots         | ~{:.0} cy saved on every call",
+        sc.p50.saturating_sub(so.p50)
+    );
+    println!(
+        "Pre-allocated fills Vec     | Eliminates 2 allocs per price level    | Reduces alloc overhead"
+    );
+    println!(
+        "drain(..n) vs N×remove(0)   | ONE memmove vs N memmoves              | {:.1}x on deep levels",
+        deep_speedup
+    );
+    println!(
+        "Inlined match logic         | No function call boundary              | Better register use"
+    );
 }
