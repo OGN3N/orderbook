@@ -1,3 +1,6 @@
+use orderbook::analysis::{CsvExporter, ResultRow};
+use orderbook::orderbook::OrderbookTrait;
+use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 /// Scenario 4.2d: Steady-State Operations
 ///
 /// Pre-populated book with mixed operation workload
@@ -7,17 +10,14 @@
 use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook;
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
-use orderbook::orderbook::OrderbookTrait;
-use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
 use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
 use orderbook::types::order::{IdCounter, Order, OrderId, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
-use orderbook::analysis::{CsvExporter, ResultRow};
+use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 
 const MID_PRICE: u32 = 5_000;
 const PRICE_SPREAD: u32 = 100; // Orders within ±50 ticks
@@ -92,9 +92,21 @@ fn main() {
     println!("  Initial book depth: {} orders", INITIAL_ORDERS);
     println!("  Total operations: {}", NUM_OPERATIONS);
     println!("  Workload mix:");
-    println!("    - Add orders:    {:.0}% ({} ops)", ADD_RATIO * 100.0, (NUM_OPERATIONS as f64 * ADD_RATIO) as usize);
-    println!("    - Cancel orders: {:.0}% ({} ops)", CANCEL_RATIO * 100.0, (NUM_OPERATIONS as f64 * CANCEL_RATIO) as usize);
-    println!("    - Market orders: {:.0}% ({} ops)", MARKET_RATIO * 100.0, (NUM_OPERATIONS as f64 * MARKET_RATIO) as usize);
+    println!(
+        "    - Add orders:    {:.0}% ({} ops)",
+        ADD_RATIO * 100.0,
+        (NUM_OPERATIONS as f64 * ADD_RATIO) as usize
+    );
+    println!(
+        "    - Cancel orders: {:.0}% ({} ops)",
+        CANCEL_RATIO * 100.0,
+        (NUM_OPERATIONS as f64 * CANCEL_RATIO) as usize
+    );
+    println!(
+        "    - Market orders: {:.0}% ({} ops)",
+        MARKET_RATIO * 100.0,
+        (NUM_OPERATIONS as f64 * MARKET_RATIO) as usize
+    );
     println!();
 
     let seed: u64 = 42;
@@ -172,7 +184,11 @@ fn run_steady_state<O: OrderbookTrait>(seed: u64) -> SteadyStateResults {
     let mut active_order_ids: Vec<OrderId> = Vec::with_capacity(INITIAL_ORDERS * 2);
 
     for _ in 0..INITIAL_ORDERS {
-        let side = if rng.random_bool(0.5) { Side::Bid } else { Side::Ask };
+        let side = if rng.random_bool(0.5) {
+            Side::Bid
+        } else {
+            Side::Ask
+        };
         let offset = rng.random_range(0..PRICE_SPREAD);
         let price_value = (MID_PRICE - PRICE_SPREAD / 2 + offset).clamp(1, 9999);
 
@@ -201,7 +217,11 @@ fn run_steady_state<O: OrderbookTrait>(seed: u64) -> SteadyStateResults {
 
         if op_choice < ADD_RATIO {
             // Add order
-            let side = if rng.random_bool(0.5) { Side::Bid } else { Side::Ask };
+            let side = if rng.random_bool(0.5) {
+                Side::Bid
+            } else {
+                Side::Ask
+            };
             let offset = rng.random_range(0..PRICE_SPREAD);
             let price_value = (MID_PRICE - PRICE_SPREAD / 2 + offset).clamp(1, 9999);
 
@@ -230,7 +250,11 @@ fn run_steady_state<O: OrderbookTrait>(seed: u64) -> SteadyStateResults {
             }
         } else {
             // Market order
-            let side = if rng.random_bool(0.5) { Side::Bid } else { Side::Ask };
+            let side = if rng.random_bool(0.5) {
+                Side::Bid
+            } else {
+                Side::Ask
+            };
 
             market_tracker.record(|| {
                 let _ = book.execute_market_order(side, Quantity::define(100));
@@ -384,7 +408,11 @@ fn print_tail_analysis(
     tree: &SteadyStateResults,
 ) {
     let ratio = |p99: u64, p50: u64| -> f64 {
-        if p50 == 0 { 0.0 } else { p99 as f64 / p50 as f64 }
+        if p50 == 0 {
+            0.0
+        } else {
+            p99 as f64 / p50 as f64
+        }
     };
 
     println!(
@@ -480,5 +508,4 @@ fn print_summary(
             weighted_avg / cpu_ghz
         );
     }
-
 }

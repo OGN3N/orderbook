@@ -13,9 +13,9 @@
 /// Run with: cargo run --release --example bench_alignment
 use orderbook::perf::latency::LatencyTracker;
 use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 
 const NUM_ORDERS: usize = 10_000;
 const NUM_ORDERS_RANDOM: usize = 500_000; // spills out of L2 (~1MB), into V-Cache
@@ -100,11 +100,11 @@ struct OrderPacked {
 #[repr(C, align(64))]
 #[derive(Clone, Copy)]
 struct OrderAligned64 {
-    id: u64,       // 8 bytes
-    side: u8,      // 1 byte
-    price: u32,    // 4 bytes
+    id: u64,    // 8 bytes
+    side: u8,   // 1 byte
+    price: u32, // 4 bytes
     quantity: u32, // 4 bytes
-    // 44 bytes padding added by align(64)
+                // 44 bytes padding added by align(64)
 }
 // Total: 64 bytes
 
@@ -133,7 +133,10 @@ fn main() {
 
     println!("OrderDefault:");
     println!("  size:      {} bytes", std::mem::size_of::<OrderDefault>());
-    println!("  align:     {} bytes", std::mem::align_of::<OrderDefault>());
+    println!(
+        "  align:     {} bytes",
+        std::mem::align_of::<OrderDefault>()
+    );
     println!(
         "  per cache line: {:.1}",
         64.0 / std::mem::size_of::<OrderDefault>() as f64
@@ -160,8 +163,14 @@ fn main() {
     );
 
     println!("\nOrderAligned64:");
-    println!("  size:      {} bytes", std::mem::size_of::<OrderAligned64>());
-    println!("  align:     {} bytes", std::mem::align_of::<OrderAligned64>());
+    println!(
+        "  size:      {} bytes",
+        std::mem::size_of::<OrderAligned64>()
+    );
+    println!(
+        "  align:     {} bytes",
+        std::mem::align_of::<OrderAligned64>()
+    );
     println!(
         "  per cache line: {:.1}",
         64.0 / std::mem::size_of::<OrderAligned64>() as f64
@@ -210,18 +219,42 @@ fn main() {
     let default_seq = bench_sequential_default(seed);
     let packed_seq = bench_sequential_packed(seed);
     let aligned_seq = bench_sequential_aligned(seed);
-    print_bench_comparison("Sequential", &default_seq, &packed_seq, &aligned_seq, cpu_ghz);
+    print_bench_comparison(
+        "Sequential",
+        &default_seq,
+        &packed_seq,
+        &aligned_seq,
+        cpu_ghz,
+    );
 
-    println!("\n--- Random Access: {} random reads per sample ({} orders, spills L2) ---", RANDOM_BATCH, NUM_ORDERS_RANDOM);
-    println!("(Tests cache miss behavior per layout — time is per batch of {} accesses)\n", RANDOM_BATCH);
+    println!(
+        "\n--- Random Access: {} random reads per sample ({} orders, spills L2) ---",
+        RANDOM_BATCH, NUM_ORDERS_RANDOM
+    );
+    println!(
+        "(Tests cache miss behavior per layout — time is per batch of {} accesses)\n",
+        RANDOM_BATCH
+    );
 
     let default_rnd = bench_random_access_default(seed);
     let packed_rnd = bench_random_access_packed(seed);
     let aligned_rnd = bench_random_access_aligned(seed);
-    print_bench_comparison("Random Access", &default_rnd, &packed_rnd, &aligned_rnd, cpu_ghz);
+    print_bench_comparison(
+        "Random Access",
+        &default_rnd,
+        &packed_rnd,
+        &aligned_rnd,
+        cpu_ghz,
+    );
 
-    println!("\n--- Insert: build Vec of {} orders from scratch (with reallocation) ---", NUM_ORDERS);
-    println!("(Tests allocation cost per layout — time is per full insert of {} orders)\n", NUM_ORDERS);
+    println!(
+        "\n--- Insert: build Vec of {} orders from scratch (with reallocation) ---",
+        NUM_ORDERS
+    );
+    println!(
+        "(Tests allocation cost per layout — time is per full insert of {} orders)\n",
+        NUM_ORDERS
+    );
 
     let default_ins = bench_insert_default(seed);
     let packed_ins = bench_insert_packed(seed);
@@ -230,9 +263,15 @@ fn main() {
 
     println!("\n--- Summary ---");
     print_summary(
-        &default_seq, &packed_seq, &aligned_seq,
-        &default_rnd, &packed_rnd, &aligned_rnd,
-        &default_ins, &packed_ins, &aligned_ins,
+        &default_seq,
+        &packed_seq,
+        &aligned_seq,
+        &default_rnd,
+        &packed_rnd,
+        &aligned_rnd,
+        &default_ins,
+        &packed_ins,
+        &aligned_ins,
         cpu_ghz,
     );
 }
@@ -289,7 +328,11 @@ fn bench_sequential_default(seed: u64) -> BenchResult {
     }
 
     let p = tracker.precentiles().expect("No samples");
-    BenchResult { p50: p.p50, p99: p.p99, max: p.max }
+    BenchResult {
+        p50: p.p50,
+        p99: p.p99,
+        max: p.max,
+    }
 }
 
 fn bench_sequential_packed(seed: u64) -> BenchResult {
@@ -317,7 +360,11 @@ fn bench_sequential_packed(seed: u64) -> BenchResult {
     }
 
     let p = tracker.precentiles().expect("No samples");
-    BenchResult { p50: p.p50, p99: p.p99, max: p.max }
+    BenchResult {
+        p50: p.p50,
+        p99: p.p99,
+        max: p.max,
+    }
 }
 
 fn bench_sequential_aligned(seed: u64) -> BenchResult {
@@ -343,7 +390,11 @@ fn bench_sequential_aligned(seed: u64) -> BenchResult {
     }
 
     let p = tracker.precentiles().expect("No samples");
-    BenchResult { p50: p.p50, p99: p.p99, max: p.max }
+    BenchResult {
+        p50: p.p50,
+        p99: p.p99,
+        max: p.max,
+    }
 }
 
 // ============================================================================
@@ -379,7 +430,11 @@ fn bench_random_access_default(seed: u64) -> BenchResult {
     }
 
     let p = tracker.precentiles().expect("No samples");
-    BenchResult { p50: p.p50, p99: p.p99, max: p.max }
+    BenchResult {
+        p50: p.p50,
+        p99: p.p99,
+        max: p.max,
+    }
 }
 
 fn bench_random_access_packed(seed: u64) -> BenchResult {
@@ -409,7 +464,11 @@ fn bench_random_access_packed(seed: u64) -> BenchResult {
     }
 
     let p = tracker.precentiles().expect("No samples");
-    BenchResult { p50: p.p50, p99: p.p99, max: p.max }
+    BenchResult {
+        p50: p.p50,
+        p99: p.p99,
+        max: p.max,
+    }
 }
 
 fn bench_random_access_aligned(seed: u64) -> BenchResult {
@@ -438,7 +497,11 @@ fn bench_random_access_aligned(seed: u64) -> BenchResult {
     }
 
     let p = tracker.precentiles().expect("No samples");
-    BenchResult { p50: p.p50, p99: p.p99, max: p.max }
+    BenchResult {
+        p50: p.p50,
+        p99: p.p99,
+        max: p.max,
+    }
 }
 
 // ============================================================================
@@ -475,7 +538,11 @@ fn bench_insert_default(seed: u64) -> BenchResult {
     }
 
     let p = tracker.precentiles().expect("No samples");
-    BenchResult { p50: p.p50, p99: p.p99, max: p.max }
+    BenchResult {
+        p50: p.p50,
+        p99: p.p99,
+        max: p.max,
+    }
 }
 
 fn bench_insert_packed(seed: u64) -> BenchResult {
@@ -502,7 +569,11 @@ fn bench_insert_packed(seed: u64) -> BenchResult {
     }
 
     let p = tracker.precentiles().expect("No samples");
-    BenchResult { p50: p.p50, p99: p.p99, max: p.max }
+    BenchResult {
+        p50: p.p50,
+        p99: p.p99,
+        max: p.max,
+    }
 }
 
 fn bench_insert_aligned(seed: u64) -> BenchResult {
@@ -529,7 +600,11 @@ fn bench_insert_aligned(seed: u64) -> BenchResult {
     }
 
     let p = tracker.precentiles().expect("No samples");
-    BenchResult { p50: p.p50, p99: p.p99, max: p.max }
+    BenchResult {
+        p50: p.p50,
+        p99: p.p99,
+        max: p.max,
+    }
 }
 
 // ============================================================================
@@ -581,9 +656,15 @@ fn print_bench_comparison(
 }
 
 fn print_summary(
-    def_seq: &BenchResult, pack_seq: &BenchResult, align_seq: &BenchResult,
-    def_rnd: &BenchResult, pack_rnd: &BenchResult, align_rnd: &BenchResult,
-    def_ins: &BenchResult, pack_ins: &BenchResult, align_ins: &BenchResult,
+    def_seq: &BenchResult,
+    pack_seq: &BenchResult,
+    align_seq: &BenchResult,
+    def_rnd: &BenchResult,
+    pack_rnd: &BenchResult,
+    align_rnd: &BenchResult,
+    def_ins: &BenchResult,
+    pack_ins: &BenchResult,
+    align_ins: &BenchResult,
     cpu_ghz: f64,
 ) {
     println!("\np50 comparison (cycles):");
@@ -615,13 +696,15 @@ fn print_summary(
         "  Packed:   {:>8} bytes ({:.1} KB) — {:.0}% of Default",
         NUM_ORDERS * std::mem::size_of::<OrderPacked>(),
         (NUM_ORDERS * std::mem::size_of::<OrderPacked>()) as f64 / 1024.0,
-        std::mem::size_of::<OrderPacked>() as f64 / std::mem::size_of::<OrderDefault>() as f64 * 100.0
+        std::mem::size_of::<OrderPacked>() as f64 / std::mem::size_of::<OrderDefault>() as f64
+            * 100.0
     );
     println!(
         "  Aligned:  {:>8} bytes ({:.1} KB) — {:.0}% of Default",
         NUM_ORDERS * std::mem::size_of::<OrderAligned64>(),
         (NUM_ORDERS * std::mem::size_of::<OrderAligned64>()) as f64 / 1024.0,
-        std::mem::size_of::<OrderAligned64>() as f64 / std::mem::size_of::<OrderDefault>() as f64 * 100.0
+        std::mem::size_of::<OrderAligned64>() as f64 / std::mem::size_of::<OrderDefault>() as f64
+            * 100.0
     );
 
     println!("\nTradeoffs:");

@@ -3,22 +3,49 @@ use std::time::Instant;
 
 const BENCHMARKS: &[(&str, &str)] = &[
     // Core latency comparison — most important for thesis
-    ("bench_latency",        "all 4 implementations × 3 operations, full percentile table"),
+    (
+        "bench_latency",
+        "all 4 implementations × 3 operations, full percentile table",
+    ),
     // Memory layout experiments
-    ("bench_alignment",      "default vs packed vs cache-line aligned Order structs"),
-    ("bench_hugepages",      "4KB vs 2MB pages — TLB pressure on 7800X3D V-Cache"),
-    ("bench_prefetch",       "software prefetch effectiveness on V-Cache"),
-    ("bench_market_order",   "drain() vs remove() — 1.6x speedup on deep sweeps"),
+    (
+        "bench_alignment",
+        "default vs packed vs cache-line aligned Order structs",
+    ),
+    (
+        "bench_hugepages",
+        "4KB vs 2MB pages — TLB pressure on 7800X3D V-Cache",
+    ),
+    (
+        "bench_prefetch",
+        "software prefetch effectiveness on V-Cache",
+    ),
+    (
+        "bench_market_order",
+        "drain() vs remove() — 1.6x speedup on deep sweeps",
+    ),
     // Synthetic distribution workloads
-    ("scenario_uniform",     "uniform random price distribution"),
-    ("scenario_clustered",   "90% of orders within ±10 ticks of mid"),
-    ("scenario_zipfian",     "Zipfian (power-law) price distribution"),
-    ("scenario_bursty",      "alternating burst/quiet traffic cycles"),
+    ("scenario_uniform", "uniform random price distribution"),
+    (
+        "scenario_clustered",
+        "90% of orders within ±10 ticks of mid",
+    ),
+    ("scenario_zipfian", "Zipfian (power-law) price distribution"),
+    ("scenario_bursty", "alternating burst/quiet traffic cycles"),
     // Realistic HFT workloads
-    ("scenario_high_cancel", "10:1 cancel ratio — HFT market maker pattern"),
-    ("scenario_sweep",       "market order depth sweeps (5/20/50 levels)"),
-    ("scenario_buildup",     "cold-start book filling from empty"),
-    ("scenario_steady_state","60% add / 30% cancel / 10% market — typical trading day"),
+    (
+        "scenario_high_cancel",
+        "10:1 cancel ratio — HFT market maker pattern",
+    ),
+    (
+        "scenario_sweep",
+        "buy/sell depth sweeps (5/20/50/150 levels)",
+    ),
+    ("scenario_buildup", "cold-start book filling from empty"),
+    (
+        "scenario_steady_state",
+        "60% add / 30% cancel / 10% market — typical trading day",
+    ),
 ];
 
 fn main() {
@@ -38,7 +65,10 @@ fn main() {
             match BENCHMARKS.iter().find(|(name, _)| name == arg) {
                 Some(&entry) => selected.push(entry),
                 None => {
-                    eprintln!("Unknown benchmark: '{}'. Run with --list to see options.", arg);
+                    eprintln!(
+                        "Unknown benchmark: '{}'. Run with --list to see options.",
+                        arg
+                    );
                     std::process::exit(1);
                 }
             }
@@ -86,7 +116,10 @@ fn main() {
     };
 
     println!("\n{}", "═".repeat(72));
-    println!("Results: {}/{} benchmarks completed in {}", passed, total, total_str);
+    println!(
+        "Results: {}/{} benchmarks completed in {}",
+        passed, total, total_str
+    );
 
     if !failed.is_empty() {
         eprintln!("Failed: {}", failed.join(", "));

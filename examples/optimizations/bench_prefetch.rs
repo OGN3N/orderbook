@@ -8,9 +8,9 @@
 /// NOTE: x86_64 only (uses _mm_prefetch intrinsics)
 use orderbook::perf::latency::LatencyTracker;
 use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 use std::collections::HashMap;
 
 const NUM_SAMPLES: usize = 1_000;
@@ -116,9 +116,13 @@ fn main() {
         }
     }
 
-    println!("\nLevel size: {} bytes (Vec header)", std::mem::size_of::<Level>());
+    println!(
+        "\nLevel size: {} bytes (Vec header)",
+        std::mem::size_of::<Level>()
+    );
     println!("Order size: {} bytes", std::mem::size_of::<Order>());
-    println!("Array: {} levels × {} = {} bytes\n",
+    println!(
+        "Array: {} levels × {} = {} bytes\n",
         ELEMENT_NUM,
         std::mem::size_of::<Level>(),
         ELEMENT_NUM * std::mem::size_of::<Level>(),
@@ -156,7 +160,11 @@ fn bench_sequential_scan(cpu_ghz: f64) {
     for _ in 0..500 {
         let idx = rng.random_range(0..ELEMENT_NUM);
         levels[idx].orders.push(Order {
-            id: idx as u64, price: idx as u32, quantity: 100, _side: 1, _pad: [0; 7],
+            id: idx as u64,
+            price: idx as u32,
+            quantity: 100,
+            _side: 1,
+            _pad: [0; 7],
         });
     }
 
@@ -221,23 +229,27 @@ fn bench_sequential_scan(cpu_ghz: f64) {
     let p_pf4 = tracker_pf4.precentiles().unwrap();
     let p_pf16 = tracker_pf16.precentiles().unwrap();
 
-    println!(
-        "{:<20} | {:>14} | {:>8}",
-        "Variant", "p50", "vs None"
-    );
+    println!("{:<20} | {:>14} | {:>8}", "Variant", "p50", "vs None");
     println!("{:-<50}", "");
     println!(
         "{:<20} | {:>8} cy {:>3.0}ns | {:>6}",
-        "No prefetch", p_none.p50, cycles_to_ns(p_none.p50, cpu_ghz), "—"
+        "No prefetch",
+        p_none.p50,
+        cycles_to_ns(p_none.p50, cpu_ghz),
+        "—"
     );
     println!(
         "{:<20} | {:>8} cy {:>3.0}ns | {:>5.2}x",
-        "Prefetch +4", p_pf4.p50, cycles_to_ns(p_pf4.p50, cpu_ghz),
+        "Prefetch +4",
+        p_pf4.p50,
+        cycles_to_ns(p_pf4.p50, cpu_ghz),
         p_none.p50 as f64 / p_pf4.p50.max(1) as f64,
     );
     println!(
         "{:<20} | {:>8} cy {:>3.0}ns | {:>5.2}x",
-        "Prefetch +16", p_pf16.p50, cycles_to_ns(p_pf16.p50, cpu_ghz),
+        "Prefetch +16",
+        p_pf16.p50,
+        cycles_to_ns(p_pf16.p50, cpu_ghz),
         p_none.p50 as f64 / p_pf16.p50.max(1) as f64,
     );
     println!();
@@ -257,7 +269,11 @@ fn bench_random_access(seed: u64, cpu_ghz: f64) {
     // Fill all levels with 1 order so reads are non-trivial
     for i in 0..ELEMENT_NUM {
         levels[i].orders.push(Order {
-            id: i as u64, price: i as u32, quantity: 100, _side: 1, _pad: [0; 7],
+            id: i as u64,
+            price: i as u32,
+            quantity: 100,
+            _side: 1,
+            _pad: [0; 7],
         });
     }
 
@@ -322,23 +338,27 @@ fn bench_random_access(seed: u64, cpu_ghz: f64) {
     let p_pf1 = tracker_pf1.precentiles().unwrap();
     let p_pf4 = tracker_pf4.precentiles().unwrap();
 
-    println!(
-        "{:<20} | {:>14} | {:>8}",
-        "Variant", "p50", "vs None"
-    );
+    println!("{:<20} | {:>14} | {:>8}", "Variant", "p50", "vs None");
     println!("{:-<50}", "");
     println!(
         "{:<20} | {:>8} cy {:>3.0}ns | {:>6}",
-        "No prefetch", p_none.p50, cycles_to_ns(p_none.p50, cpu_ghz), "—"
+        "No prefetch",
+        p_none.p50,
+        cycles_to_ns(p_none.p50, cpu_ghz),
+        "—"
     );
     println!(
         "{:<20} | {:>8} cy {:>3.0}ns | {:>5.2}x",
-        "Prefetch +1", p_pf1.p50, cycles_to_ns(p_pf1.p50, cpu_ghz),
+        "Prefetch +1",
+        p_pf1.p50,
+        cycles_to_ns(p_pf1.p50, cpu_ghz),
         p_none.p50 as f64 / p_pf1.p50.max(1) as f64,
     );
     println!(
         "{:<20} | {:>8} cy {:>3.0}ns | {:>5.2}x",
-        "Prefetch +4", p_pf4.p50, cycles_to_ns(p_pf4.p50, cpu_ghz),
+        "Prefetch +4",
+        p_pf4.p50,
+        cycles_to_ns(p_pf4.p50, cpu_ghz),
         p_none.p50 as f64 / p_pf4.p50.max(1) as f64,
     );
     println!();
@@ -445,23 +465,27 @@ fn bench_pointer_chase(seed: u64, cpu_ghz: f64) {
     let p_pf = tracker_pf.precentiles().unwrap();
     let p_pf8 = tracker_pf8.precentiles().unwrap();
 
-    println!(
-        "{:<25} | {:>14} | {:>8}",
-        "Variant", "p50", "vs None"
-    );
+    println!("{:<25} | {:>14} | {:>8}", "Variant", "p50", "vs None");
     println!("{:-<55}", "");
     println!(
         "{:<25} | {:>8} cy {:>3.0}ns | {:>6}",
-        "No prefetch", p_none.p50, cycles_to_ns(p_none.p50, cpu_ghz), "—"
+        "No prefetch",
+        p_none.p50,
+        cycles_to_ns(p_none.p50, cpu_ghz),
+        "—"
     );
     println!(
         "{:<25} | {:>8} cy {:>3.0}ns | {:>5.2}x",
-        "Prefetch heap +2", p_pf.p50, cycles_to_ns(p_pf.p50, cpu_ghz),
+        "Prefetch heap +2",
+        p_pf.p50,
+        cycles_to_ns(p_pf.p50, cpu_ghz),
         p_none.p50 as f64 / p_pf.p50.max(1) as f64,
     );
     println!(
         "{:<25} | {:>8} cy {:>3.0}ns | {:>5.2}x",
-        "Prefetch heap +8", p_pf8.p50, cycles_to_ns(p_pf8.p50, cpu_ghz),
+        "Prefetch heap +8",
+        p_pf8.p50,
+        cycles_to_ns(p_pf8.p50, cpu_ghz),
         p_none.p50 as f64 / p_pf8.p50.max(1) as f64,
     );
     println!();
@@ -510,18 +534,20 @@ fn bench_market_order_sim(seed: u64, cpu_ghz: f64) {
     let p_none = tracker_none.precentiles().unwrap();
     let p_pf = tracker_pf.precentiles().unwrap();
 
-    println!(
-        "{:<25} | {:>14} | {:>8}",
-        "Variant", "p50", "vs None"
-    );
+    println!("{:<25} | {:>14} | {:>8}", "Variant", "p50", "vs None");
     println!("{:-<55}", "");
     println!(
         "{:<25} | {:>8} cy {:>3.0}ns | {:>6}",
-        "No prefetch", p_none.p50, cycles_to_ns(p_none.p50, cpu_ghz), "—"
+        "No prefetch",
+        p_none.p50,
+        cycles_to_ns(p_none.p50, cpu_ghz),
+        "—"
     );
     println!(
         "{:<25} | {:>8} cy {:>3.0}ns | {:>5.2}x",
-        "Prefetch heap ahead", p_pf.p50, cycles_to_ns(p_pf.p50, cpu_ghz),
+        "Prefetch heap ahead",
+        p_pf.p50,
+        cycles_to_ns(p_pf.p50, cpu_ghz),
         p_none.p50 as f64 / p_pf.p50.max(1) as f64,
     );
     println!();

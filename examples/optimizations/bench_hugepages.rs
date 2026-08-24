@@ -9,9 +9,9 @@
 /// Check: cat /sys/kernel/mm/transparent_hugepage/enabled
 use orderbook::perf::latency::LatencyTracker;
 use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 
 const NUM_SAMPLES: usize = 1_000;
 
@@ -105,7 +105,7 @@ fn free_mmap(ptr: *mut u8, size: usize) {
 /// Simulates a price level slot (like Fixed-Tick's Level Vec header)
 #[repr(C)]
 struct Slot {
-    count: u64,   // number of orders (simulates Vec len)
+    count: u64,     // number of orders (simulates Vec len)
     total_qty: u64, // total quantity at this level
     _pad: [u64; 1], // pad to 24 bytes (matches Vec header size)
 }
@@ -157,9 +157,9 @@ fn run_benchmarks(cpu_ghz: f64) {
 
     // Test different array sizes
     let sizes: Vec<(usize, &str)> = vec![
-        (10_000, "10K slots (240 KB)"),    // Fixed-Tick orderbook size
-        (100_000, "100K slots (2.4 MB)"),  // Larger than L1+L2 cache
-        (1_000_000, "1M slots (24 MB)"),   // Larger than L3 cache
+        (10_000, "10K slots (240 KB)"),   // Fixed-Tick orderbook size
+        (100_000, "100K slots (2.4 MB)"), // Larger than L1+L2 cache
+        (1_000_000, "1M slots (24 MB)"),  // Larger than L3 cache
     ];
 
     println!("--- Sequential Scan ---");
@@ -176,8 +176,10 @@ fn run_benchmarks(cpu_ghz: f64) {
         println!(
             "{:<25} | {:>8} cy {:>3.0}ns | {:>8} cy {:>3.0}ns | {:>6.2}x",
             label,
-            normal_p50, cycles_to_ns(normal_p50, cpu_ghz),
-            huge_p50, cycles_to_ns(huge_p50, cpu_ghz),
+            normal_p50,
+            cycles_to_ns(normal_p50, cpu_ghz),
+            huge_p50,
+            cycles_to_ns(huge_p50, cpu_ghz),
             speedup,
         );
     }
@@ -196,8 +198,10 @@ fn run_benchmarks(cpu_ghz: f64) {
         println!(
             "{:<25} | {:>8} cy {:>3.0}ns | {:>8} cy {:>3.0}ns | {:>6.2}x",
             label,
-            normal_p50, cycles_to_ns(normal_p50, cpu_ghz),
-            huge_p50, cycles_to_ns(huge_p50, cpu_ghz),
+            normal_p50,
+            cycles_to_ns(normal_p50, cpu_ghz),
+            huge_p50,
+            cycles_to_ns(huge_p50, cpu_ghz),
             speedup,
         );
     }
@@ -216,8 +220,10 @@ fn run_benchmarks(cpu_ghz: f64) {
         println!(
             "{:<25} | {:>8} cy {:>3.0}ns | {:>8} cy {:>3.0}ns | {:>6.2}x",
             label,
-            normal_p50, cycles_to_ns(normal_p50, cpu_ghz),
-            huge_p50, cycles_to_ns(huge_p50, cpu_ghz),
+            normal_p50,
+            cycles_to_ns(normal_p50, cpu_ghz),
+            huge_p50,
+            cycles_to_ns(huge_p50, cpu_ghz),
             speedup,
         );
     }
@@ -247,7 +253,8 @@ fn bench_sequential(num_slots: usize, _seed: u64, _cpu_ghz: f64) -> (u64, u64) {
 
     // Normal pages
     let ptr_normal = alloc_mmap(size, false);
-    let slots_normal = unsafe { std::slice::from_raw_parts_mut(ptr_normal as *mut Slot, num_slots) };
+    let slots_normal =
+        unsafe { std::slice::from_raw_parts_mut(ptr_normal as *mut Slot, num_slots) };
     // Initialize
     for (i, slot) in slots_normal.iter_mut().enumerate() {
         slot.count = 1;
@@ -305,7 +312,8 @@ fn bench_random(num_slots: usize, seed: u64, _cpu_ghz: f64) -> (u64, u64) {
 
     // Normal pages
     let ptr_normal = alloc_mmap(size, false);
-    let slots_normal = unsafe { std::slice::from_raw_parts_mut(ptr_normal as *mut Slot, num_slots) };
+    let slots_normal =
+        unsafe { std::slice::from_raw_parts_mut(ptr_normal as *mut Slot, num_slots) };
     for (i, slot) in slots_normal.iter_mut().enumerate() {
         slot.count = 1;
         slot.total_qty = (i as u64) % 1000;
@@ -360,7 +368,8 @@ fn bench_strided(num_slots: usize, _seed: u64, _cpu_ghz: f64) -> (u64, u64) {
 
     // Normal pages
     let ptr_normal = alloc_mmap(size, false);
-    let slots_normal = unsafe { std::slice::from_raw_parts_mut(ptr_normal as *mut Slot, num_slots) };
+    let slots_normal =
+        unsafe { std::slice::from_raw_parts_mut(ptr_normal as *mut Slot, num_slots) };
     for (i, slot) in slots_normal.iter_mut().enumerate() {
         slot.count = 1;
         slot.total_qty = (i as u64) % 1000;

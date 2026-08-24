@@ -1,3 +1,5 @@
+use orderbook::orderbook::OrderbookTrait;
+use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 /// Scenario 4.2c: Order Book Build-Up
 ///
 /// Starting from empty book, measure latency as book fills
@@ -7,16 +9,14 @@
 use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook;
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
-use orderbook::orderbook::OrderbookTrait;
-use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 use orderbook::perf::latency::LatencyTracker;
 use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
 use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
+use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 
 const MID_PRICE: u32 = 5_000;
 const PRICE_SPREAD: u32 = 100; // Orders within ±50 ticks
@@ -151,7 +151,11 @@ fn run_buildup_benchmark<O: OrderbookTrait>(seed: u64) -> BuildupResults {
     let mut rng = StdRng::seed_from_u64(seed + 1);
 
     for (i, &price_value) in prices.iter().enumerate() {
-        let side = if rng.random_bool(0.5) { Side::Bid } else { Side::Ask };
+        let side = if rng.random_bool(0.5) {
+            Side::Bid
+        } else {
+            Side::Ask
+        };
 
         // Check if we're at a measurement point
         let current_pct = (orders_added * 100) / TOTAL_ORDERS;
@@ -163,7 +167,11 @@ fn run_buildup_benchmark<O: OrderbookTrait>(seed: u64) -> BuildupResults {
 
             let measure_end = (i + ORDERS_PER_MEASUREMENT).min(TOTAL_ORDERS);
             for j in i..measure_end {
-                let measure_side = if rng.random_bool(0.5) { Side::Bid } else { Side::Ask };
+                let measure_side = if rng.random_bool(0.5) {
+                    Side::Bid
+                } else {
+                    Side::Ask
+                };
                 let order = Order::new(
                     Price::define(prices[j]),
                     Quantity::define(100),

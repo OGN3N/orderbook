@@ -1,3 +1,4 @@
+use orderbook::orderbook::SoA::orderbook::Orderbook as SoA;
 /// Cross-implementation correctness tests
 ///
 /// Every correctness claim in the thesis ("Hybrid is 27× faster than FixedTick
@@ -13,11 +14,9 @@
 ///   - Fills from execute_market_order(), normalised to qty-per-price-level
 ///     (individual Fill structs may differ across impls if one level is split
 ///     into multiple fills — the qty per price must still agree)
-
 use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTick;
 use orderbook::orderbook::hybrid::orderbook::Orderbook as Hybrid;
 use orderbook::orderbook::tree::orderbook::Orderbook as Tree;
-use orderbook::orderbook::SoA::orderbook::Orderbook as SoA;
 use orderbook::orderbook::{Fill, OrderbookTrait};
 use orderbook::types::order::{IdCounter, Order, OrderId, Side};
 use orderbook::types::price::Price;
@@ -42,11 +41,17 @@ impl NormFills {
             *by_price.entry(f.price.value()).or_insert(0) += f.quantity.value();
             total_qty += f.quantity.value();
         }
-        Self { by_price, total_qty }
+        Self {
+            by_price,
+            total_qty,
+        }
     }
 
     fn empty() -> Self {
-        Self { by_price: BTreeMap::new(), total_qty: 0 }
+        Self {
+            by_price: BTreeMap::new(),
+            total_qty: 0,
+        }
     }
 }
 
@@ -55,10 +60,19 @@ impl NormFills {
 /// A single logical operation applied to the book.
 #[derive(Debug, Clone)]
 enum Op {
-    Add { side: Side, price: u32, qty: u32 },
+    Add {
+        side: Side,
+        price: u32,
+        qty: u32,
+    },
     /// Cancel the order at position `idx % active_len`. Safe even on empty book.
-    Cancel { idx: usize },
-    Market { side: Side, qty: u32 },
+    Cancel {
+        idx: usize,
+    },
+    Market {
+        side: Side,
+        qty: u32,
+    },
 }
 
 /// Observable state collected over a run.
@@ -124,7 +138,12 @@ fn run<O: OrderbookTrait>(ops: &[Op]) -> Outcome {
 
 /// Run the same ops through all four implementations and return their outcomes.
 fn run_all(ops: &[Op]) -> (Outcome, Outcome, Outcome, Outcome) {
-    (run::<Tree>(ops), run::<FixedTick>(ops), run::<SoA>(ops), run::<Hybrid>(ops))
+    (
+        run::<Tree>(ops),
+        run::<FixedTick>(ops),
+        run::<SoA>(ops),
+        run::<Hybrid>(ops),
+    )
 }
 
 // ─── Deterministic tests ──────────────────────────────────────────────────────
@@ -136,38 +155,58 @@ fn empty_book() {
     assert_eq!(tree.best_bid, None);
     assert_eq!(tree.best_ask, None);
     assert_eq!(tree, fixed, "empty book: tree vs fixed");
-    assert_eq!(tree, soa,   "empty book: tree vs soa");
+    assert_eq!(tree, soa, "empty book: tree vs soa");
     assert_eq!(tree, hybrid, "empty book: tree vs hybrid");
 }
 
 #[test]
 fn single_bid_best_bid() {
-    let ops = vec![Op::Add { side: Side::Bid, price: 5000, qty: 100 }];
+    let ops = vec![Op::Add {
+        side: Side::Bid,
+        price: 5000,
+        qty: 100,
+    }];
     let (tree, fixed, soa, hybrid) = run_all(&ops);
     assert_eq!(tree.best_bid, Some(5000));
     assert_eq!(tree.best_ask, None);
     assert_eq!(tree, fixed, "single bid: tree vs fixed");
-    assert_eq!(tree, soa,   "single bid: tree vs soa");
+    assert_eq!(tree, soa, "single bid: tree vs soa");
     assert_eq!(tree, hybrid, "single bid: tree vs hybrid");
 }
 
 #[test]
 fn single_ask_best_ask() {
-    let ops = vec![Op::Add { side: Side::Ask, price: 5001, qty: 100 }];
+    let ops = vec![Op::Add {
+        side: Side::Ask,
+        price: 5001,
+        qty: 100,
+    }];
     let (tree, fixed, soa, hybrid) = run_all(&ops);
     assert_eq!(tree.best_ask, Some(5001));
     assert_eq!(tree.best_bid, None);
     assert_eq!(tree, fixed, "single ask: tree vs fixed");
-    assert_eq!(tree, soa,   "single ask: tree vs soa");
+    assert_eq!(tree, soa, "single ask: tree vs soa");
     assert_eq!(tree, hybrid, "single ask: tree vs hybrid");
 }
 
 #[test]
 fn best_bid_is_highest_bid() {
     let ops = vec![
-        Op::Add { side: Side::Bid, price: 4998, qty: 100 },
-        Op::Add { side: Side::Bid, price: 5000, qty: 100 },
-        Op::Add { side: Side::Bid, price: 4999, qty: 100 },
+        Op::Add {
+            side: Side::Bid,
+            price: 4998,
+            qty: 100,
+        },
+        Op::Add {
+            side: Side::Bid,
+            price: 5000,
+            qty: 100,
+        },
+        Op::Add {
+            side: Side::Bid,
+            price: 4999,
+            qty: 100,
+        },
     ];
     let (tree, fixed, soa, hybrid) = run_all(&ops);
     assert_eq!(tree.best_bid, Some(5000));
@@ -179,9 +218,21 @@ fn best_bid_is_highest_bid() {
 #[test]
 fn best_ask_is_lowest_ask() {
     let ops = vec![
-        Op::Add { side: Side::Ask, price: 5002, qty: 100 },
-        Op::Add { side: Side::Ask, price: 5001, qty: 100 },
-        Op::Add { side: Side::Ask, price: 5003, qty: 100 },
+        Op::Add {
+            side: Side::Ask,
+            price: 5002,
+            qty: 100,
+        },
+        Op::Add {
+            side: Side::Ask,
+            price: 5001,
+            qty: 100,
+        },
+        Op::Add {
+            side: Side::Ask,
+            price: 5003,
+            qty: 100,
+        },
     ];
     let (tree, fixed, soa, hybrid) = run_all(&ops);
     assert_eq!(tree.best_ask, Some(5001));
@@ -194,21 +245,33 @@ fn best_ask_is_lowest_ask() {
 fn cancel_removes_best_order() {
     // Add two bids; cancel the better one; best_bid should fall to the lower.
     let ops = vec![
-        Op::Add { side: Side::Bid, price: 5000, qty: 100 }, // idx 0
-        Op::Add { side: Side::Bid, price: 4999, qty: 100 }, // idx 1
-        Op::Cancel { idx: 0 },                               // cancel price=5000
+        Op::Add {
+            side: Side::Bid,
+            price: 5000,
+            qty: 100,
+        }, // idx 0
+        Op::Add {
+            side: Side::Bid,
+            price: 4999,
+            qty: 100,
+        }, // idx 1
+        Op::Cancel { idx: 0 }, // cancel price=5000
     ];
     let (tree, fixed, soa, hybrid) = run_all(&ops);
     assert_eq!(tree.best_bid, Some(4999));
     assert_eq!(tree, fixed, "cancel best bid: tree vs fixed");
-    assert_eq!(tree, soa,   "cancel best bid: tree vs soa");
+    assert_eq!(tree, soa, "cancel best bid: tree vs soa");
     assert_eq!(tree, hybrid, "cancel best bid: tree vs hybrid");
 }
 
 #[test]
 fn cancel_last_order_empties_book() {
     let ops = vec![
-        Op::Add { side: Side::Ask, price: 5001, qty: 100 },
+        Op::Add {
+            side: Side::Ask,
+            price: 5001,
+            qty: 100,
+        },
         Op::Cancel { idx: 0 },
     ];
     let (tree, fixed, soa, hybrid) = run_all(&ops);
@@ -221,14 +284,21 @@ fn cancel_last_order_empties_book() {
 #[test]
 fn market_order_single_level_fill() {
     let ops = vec![
-        Op::Add { side: Side::Ask, price: 5001, qty: 100 },
-        Op::Market { side: Side::Bid, qty: 100 },
+        Op::Add {
+            side: Side::Ask,
+            price: 5001,
+            qty: 100,
+        },
+        Op::Market {
+            side: Side::Bid,
+            qty: 100,
+        },
     ];
     let (tree, fixed, soa, hybrid) = run_all(&ops);
     assert_eq!(tree.fills.total_qty, 100);
     assert_eq!(tree.fills.by_price[&5001], 100);
     assert_eq!(tree, fixed, "single fill: tree vs fixed");
-    assert_eq!(tree, soa,   "single fill: tree vs soa");
+    assert_eq!(tree, soa, "single fill: tree vs soa");
     assert_eq!(tree, hybrid, "single fill: tree vs hybrid");
 }
 
@@ -236,10 +306,25 @@ fn market_order_single_level_fill() {
 fn market_order_sweeps_multiple_levels() {
     // Three ask levels; market buy consumes all three.
     let ops = vec![
-        Op::Add { side: Side::Ask, price: 5001, qty: 100 },
-        Op::Add { side: Side::Ask, price: 5002, qty: 100 },
-        Op::Add { side: Side::Ask, price: 5003, qty: 100 },
-        Op::Market { side: Side::Bid, qty: 300 },
+        Op::Add {
+            side: Side::Ask,
+            price: 5001,
+            qty: 100,
+        },
+        Op::Add {
+            side: Side::Ask,
+            price: 5002,
+            qty: 100,
+        },
+        Op::Add {
+            side: Side::Ask,
+            price: 5003,
+            qty: 100,
+        },
+        Op::Market {
+            side: Side::Bid,
+            qty: 300,
+        },
     ];
     let (tree, fixed, soa, hybrid) = run_all(&ops);
     assert_eq!(tree.fills.total_qty, 300);
@@ -247,7 +332,7 @@ fn market_order_sweeps_multiple_levels() {
     assert_eq!(tree.fills.by_price[&5002], 100);
     assert_eq!(tree.fills.by_price[&5003], 100);
     assert_eq!(tree, fixed, "multi-level sweep: tree vs fixed");
-    assert_eq!(tree, soa,   "multi-level sweep: tree vs soa");
+    assert_eq!(tree, soa, "multi-level sweep: tree vs soa");
     assert_eq!(tree, hybrid, "multi-level sweep: tree vs hybrid");
 }
 
@@ -261,8 +346,16 @@ fn book_invariant_no_crossed_book() {
     // crossing orders. best_bid < best_ask holds when bid and ask prices don't
     // cross; we verify it for a typical non-crossing spread.
     let ops = vec![
-        Op::Add { side: Side::Bid, price: 4999, qty: 100 },
-        Op::Add { side: Side::Ask, price: 5001, qty: 100 },
+        Op::Add {
+            side: Side::Bid,
+            price: 4999,
+            qty: 100,
+        },
+        Op::Add {
+            side: Side::Ask,
+            price: 5001,
+            qty: 100,
+        },
     ];
     let (tree, fixed, soa, hybrid) = run_all(&ops);
     for outcome in [&tree, &fixed, &soa, &hybrid] {
