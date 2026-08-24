@@ -63,4 +63,9 @@ impl CsvExporter {
             p.mean / g,
         )
     }
+
+    /// Flush all buffered rows so write errors are reported before returning.
+    pub fn flush(&mut self) -> std::io::Result<()> {
+        self.writer.flush()
+    }
 }

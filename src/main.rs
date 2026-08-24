@@ -41,10 +41,13 @@ const BENCHMARKS: &[(&str, &str)] = &[
         "scenario_sweep",
         "buy/sell depth sweeps (5/20/50/150 levels)",
     ),
-    ("scenario_buildup", "cold-start book filling from empty"),
+    (
+        "scenario_buildup",
+        "add latency at 0/25/50/75/100% depth windows",
+    ),
     (
         "scenario_steady_state",
-        "60% add / 30% cancel / 10% market — typical trading day",
+        "stable-depth 60/30/10 mixed workload — Hybrid hot path",
     ),
 ];
 
