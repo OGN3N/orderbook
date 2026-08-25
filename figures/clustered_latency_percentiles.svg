@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="650" viewBox="0 0 1560 650">
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="780.00" y="38.00" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#111827" text-anchor="middle">Clustered workload: latency percentile profiles</text>
+  <text x="780.00" y="63.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">Logarithmic latency axis; aggregate percentiles from the benchmark CSV</text>
+  <text x="285.00" y="98.00" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#111827" text-anchor="middle">Limit-order insertion</text>
+  <line x1="80.00" y1="530.00" x2="490.00" y2="530.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="70.00" y="535.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">10.0 ns</text>
+  <line x1="80.00" y1="447.60" x2="490.00" y2="447.60" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="70.00" y="452.60" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">100 ns</text>
+  <line x1="80.00" y1="365.20" x2="490.00" y2="365.20" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="70.00" y="370.20" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">1.00 μs</text>
+  <line x1="80.00" y1="282.80" x2="490.00" y2="282.80" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="70.00" y="287.80" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">10.00 μs</text>
+  <line x1="80.00" y1="200.40" x2="490.00" y2="200.40" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="70.00" y="205.40" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">100.00 μs</text>
+  <line x1="80.00" y1="118.00" x2="490.00" y2="118.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="70.00" y="123.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">1000.00 μs</text>
+  <line x1="80.00" y1="118.00" x2="80.00" y2="530.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="80.00" y1="530.00" x2="490.00" y2="530.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="108.00" y1="530.00" x2="108.00" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="108.00" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p50</text>
+  <line x1="196.50" y1="530.00" x2="196.50" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="196.50" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p95</text>
+  <line x1="285.00" y1="530.00" x2="285.00" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="285.00" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p99</text>
+  <line x1="373.50" y1="530.00" x2="373.50" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="373.50" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p99.9</text>
+  <line x1="462.00" y1="530.00" x2="462.00" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="462.00" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p99.99</text>
+  <polyline points="108.00,480.30 196.50,460.31 285.00,438.16 373.50,333.36 462.00,199.92" fill="none" stroke="#2563EB" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="108.00" cy="480.30" r="4.00" fill="#2563EB"/>
+  <circle cx="196.50" cy="460.31" r="4.00" fill="#2563EB"/>
+  <circle cx="285.00" cy="438.16" r="4.00" fill="#2563EB"/>
+  <circle cx="373.50" cy="333.36" r="4.00" fill="#2563EB"/>
+  <circle cx="462.00" cy="199.92" r="4.00" fill="#2563EB"/>
+  <polyline points="108.00,480.30 196.50,441.02 285.00,416.20 373.50,393.70 462.00,234.58" fill="none" stroke="#DC2626" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="108.00" cy="480.30" r="4.00" fill="#DC2626"/>
+  <circle cx="196.50" cy="441.02" r="4.00" fill="#DC2626"/>
+  <circle cx="285.00" cy="416.20" r="4.00" fill="#DC2626"/>
+  <circle cx="373.50" cy="393.70" r="4.00" fill="#DC2626"/>
+  <circle cx="462.00" cy="234.58" r="4.00" fill="#DC2626"/>
+  <polyline points="108.00,480.30 196.50,444.12 285.00,430.71 373.50,407.04 462.00,244.72" fill="none" stroke="#059669" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="108.00" cy="480.30" r="4.00" fill="#059669"/>
+  <circle cx="196.50" cy="444.12" r="4.00" fill="#059669"/>
+  <circle cx="285.00" cy="430.71" r="4.00" fill="#059669"/>
+  <circle cx="373.50" cy="407.04" r="4.00" fill="#059669"/>
+  <circle cx="462.00" cy="244.72" r="4.00" fill="#059669"/>
+  <polyline points="108.00,472.33 196.50,444.12 285.00,428.55 373.50,402.70 462.00,231.62" fill="none" stroke="#7C3AED" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="108.00" cy="472.33" r="4.00" fill="#7C3AED"/>
+  <circle cx="196.50" cy="444.12" r="4.00" fill="#7C3AED"/>
+  <circle cx="285.00" cy="428.55" r="4.00" fill="#7C3AED"/>
+  <circle cx="373.50" cy="402.70" r="4.00" fill="#7C3AED"/>
+  <circle cx="462.00" cy="231.62" r="4.00" fill="#7C3AED"/>
+  <text x="22.00" y="324.00" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="normal" fill="#111827" text-anchor="middle" transform="rotate(-90.0 22.00 324.00)">Latency (log scale)</text>
+  <text x="785.00" y="98.00" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#111827" text-anchor="middle">Cancellation</text>
+  <line x1="580.00" y1="530.00" x2="990.00" y2="530.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="570.00" y="535.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">10.0 ns</text>
+  <line x1="580.00" y1="392.67" x2="990.00" y2="392.67" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="570.00" y="397.67" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">100 ns</text>
+  <line x1="580.00" y1="255.33" x2="990.00" y2="255.33" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="570.00" y="260.33" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">1.00 μs</text>
+  <line x1="580.00" y1="118.00" x2="990.00" y2="118.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="570.00" y="123.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">10.00 μs</text>
+  <line x1="580.00" y1="118.00" x2="580.00" y2="530.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="580.00" y1="530.00" x2="990.00" y2="530.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="608.00" y1="530.00" x2="608.00" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="608.00" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p50</text>
+  <line x1="696.50" y1="530.00" x2="696.50" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="696.50" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p95</text>
+  <line x1="785.00" y1="530.00" x2="785.00" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="785.00" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p99</text>
+  <line x1="873.50" y1="530.00" x2="873.50" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="873.50" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p99.9</text>
+  <line x1="962.00" y1="530.00" x2="962.00" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="962.00" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p99.99</text>
+  <polyline points="608.00,405.83 696.50,376.93 785.00,368.36 873.50,345.53 962.00,195.10" fill="none" stroke="#2563EB" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="608.00" cy="405.83" r="4.00" fill="#2563EB"/>
+  <circle cx="696.50" cy="376.93" r="4.00" fill="#2563EB"/>
+  <circle cx="785.00" cy="368.36" r="4.00" fill="#2563EB"/>
+  <circle cx="873.50" cy="345.53" r="4.00" fill="#2563EB"/>
+  <circle cx="962.00" cy="195.10" r="4.00" fill="#2563EB"/>
+  <polyline points="608.00,405.83 696.50,381.69 785.00,372.47 873.50,351.21 962.00,264.22" fill="none" stroke="#DC2626" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="608.00" cy="405.83" r="4.00" fill="#DC2626"/>
+  <circle cx="696.50" cy="381.69" r="4.00" fill="#DC2626"/>
+  <circle cx="785.00" cy="372.47" r="4.00" fill="#DC2626"/>
+  <circle cx="873.50" cy="351.21" r="4.00" fill="#DC2626"/>
+  <circle cx="962.00" cy="264.22" r="4.00" fill="#DC2626"/>
+  <polyline points="608.00,398.82 696.50,372.47 785.00,360.91 873.50,337.90 962.00,187.55" fill="none" stroke="#059669" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="608.00" cy="398.82" r="4.00" fill="#059669"/>
+  <circle cx="696.50" cy="372.47" r="4.00" fill="#059669"/>
+  <circle cx="785.00" cy="360.91" r="4.00" fill="#059669"/>
+  <circle cx="873.50" cy="337.90" r="4.00" fill="#059669"/>
+  <circle cx="962.00" cy="187.55" r="4.00" fill="#059669"/>
+  <polyline points="608.00,386.87 696.50,368.36 785.00,357.51 873.50,333.32 962.00,134.81" fill="none" stroke="#7C3AED" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="608.00" cy="386.87" r="4.00" fill="#7C3AED"/>
+  <circle cx="696.50" cy="368.36" r="4.00" fill="#7C3AED"/>
+  <circle cx="785.00" cy="357.51" r="4.00" fill="#7C3AED"/>
+  <circle cx="873.50" cy="333.32" r="4.00" fill="#7C3AED"/>
+  <circle cx="962.00" cy="134.81" r="4.00" fill="#7C3AED"/>
+  <text x="1285.00" y="98.00" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#111827" text-anchor="middle">Market-order execution</text>
+  <line x1="1080.00" y1="530.00" x2="1490.00" y2="530.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="1070.00" y="535.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">10.0 ns</text>
+  <line x1="1080.00" y1="427.00" x2="1490.00" y2="427.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="1070.00" y="432.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">100 ns</text>
+  <line x1="1080.00" y1="324.00" x2="1490.00" y2="324.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="1070.00" y="329.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">1.00 μs</text>
+  <line x1="1080.00" y1="221.00" x2="1490.00" y2="221.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="1070.00" y="226.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">10.00 μs</text>
+  <line x1="1080.00" y1="118.00" x2="1490.00" y2="118.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="1070.00" y="123.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">100.00 μs</text>
+  <line x1="1080.00" y1="118.00" x2="1080.00" y2="530.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="1080.00" y1="530.00" x2="1490.00" y2="530.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="1108.00" y1="530.00" x2="1108.00" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="1108.00" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p50</text>
+  <line x1="1196.50" y1="530.00" x2="1196.50" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="1196.50" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p95</text>
+  <line x1="1285.00" y1="530.00" x2="1285.00" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="1285.00" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p99</text>
+  <line x1="1373.50" y1="530.00" x2="1373.50" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="1373.50" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p99.9</text>
+  <line x1="1462.00" y1="530.00" x2="1462.00" y2="535.00" stroke="#374151" stroke-width="1"/>
+  <text x="1462.00" y="554.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">p99.99</text>
+  <polyline points="1108.00,261.24 1196.50,260.58 1285.00,253.10 1373.50,231.57 1462.00,201.19" fill="none" stroke="#2563EB" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="1108.00" cy="261.24" r="4.00" fill="#2563EB"/>
+  <circle cx="1196.50" cy="260.58" r="4.00" fill="#2563EB"/>
+  <circle cx="1285.00" cy="253.10" r="4.00" fill="#2563EB"/>
+  <circle cx="1373.50" cy="231.57" r="4.00" fill="#2563EB"/>
+  <circle cx="1462.00" cy="201.19" r="4.00" fill="#2563EB"/>
+  <polyline points="1108.00,269.84 1196.50,269.04 1285.00,250.86 1373.50,234.20 1462.00,195.20" fill="none" stroke="#DC2626" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="1108.00" cy="269.84" r="4.00" fill="#DC2626"/>
+  <circle cx="1196.50" cy="269.04" r="4.00" fill="#DC2626"/>
+  <circle cx="1285.00" cy="250.86" r="4.00" fill="#DC2626"/>
+  <circle cx="1373.50" cy="234.20" r="4.00" fill="#DC2626"/>
+  <circle cx="1462.00" cy="195.20" r="4.00" fill="#DC2626"/>
+  <polyline points="1108.00,426.91 1196.50,411.85 1285.00,405.89 1373.50,398.19 1462.00,278.66" fill="none" stroke="#059669" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="1108.00" cy="426.91" r="4.00" fill="#059669"/>
+  <circle cx="1196.50" cy="411.85" r="4.00" fill="#059669"/>
+  <circle cx="1285.00" cy="405.89" r="4.00" fill="#059669"/>
+  <circle cx="1373.50" cy="398.19" r="4.00" fill="#059669"/>
+  <circle cx="1462.00" cy="278.66" r="4.00" fill="#059669"/>
+  <polyline points="1108.00,431.61 1196.50,408.77 1285.00,403.18 1373.50,398.19 1462.00,335.03" fill="none" stroke="#7C3AED" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="1108.00" cy="431.61" r="4.00" fill="#7C3AED"/>
+  <circle cx="1196.50" cy="408.77" r="4.00" fill="#7C3AED"/>
+  <circle cx="1285.00" cy="403.18" r="4.00" fill="#7C3AED"/>
+  <circle cx="1373.50" cy="398.19" r="4.00" fill="#7C3AED"/>
+  <circle cx="1462.00" cy="335.03" r="4.00" fill="#7C3AED"/>
+  <line x1="400.00" y1="610.00" x2="428.00" y2="610.00" stroke="#2563EB" stroke-width="4"/>
+  <circle cx="414.00" cy="610.00" r="4.00" fill="#2563EB"/>
+  <text x="437.00" y="615.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#111827" text-anchor="start">Fixed-tick AoS</text>
+  <line x1="610.00" y1="610.00" x2="638.00" y2="610.00" stroke="#DC2626" stroke-width="4"/>
+  <circle cx="624.00" cy="610.00" r="4.00" fill="#DC2626"/>
+  <text x="647.00" y="615.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#111827" text-anchor="start">Fixed-tick SoA</text>
+  <line x1="820.00" y1="610.00" x2="848.00" y2="610.00" stroke="#059669" stroke-width="4"/>
+  <circle cx="834.00" cy="610.00" r="4.00" fill="#059669"/>
+  <text x="857.00" y="615.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#111827" text-anchor="start">Hybrid</text>
+  <line x1="1030.00" y1="610.00" x2="1058.00" y2="610.00" stroke="#7C3AED" stroke-width="4"/>
+  <circle cx="1044.00" cy="610.00" r="4.00" fill="#7C3AED"/>
+  <text x="1067.00" y="615.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#111827" text-anchor="start">B-tree AoS</text>
+</svg>

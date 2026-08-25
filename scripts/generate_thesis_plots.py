@@ -34,6 +34,10 @@ COLORS = {
     "tree": "#7C3AED",
 }
 FONT = "Arial, Helvetica, sans-serif"
+SCENARIO_TITLES = {
+    "uniform": "Uniform workload",
+    "clustered": "Clustered workload",
+}
 
 
 class Svg:
@@ -163,14 +167,25 @@ def format_ns(value: float) -> str:
     return f"{value:.1f} ns"
 
 
-def draw_bar_figure(rows: dict[tuple[str, str], dict[str, str]], path: Path) -> None:
+def draw_bar_figure(
+    rows: dict[tuple[str, str], dict[str, str]],
+    path: Path,
+    scenario_title: str,
+    source_path: Path,
+) -> None:
     width, height = 1560, 650
     svg = Svg(width, height)
-    svg.text(width / 2, 38, "Uniform workload: median and p99 latency", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        38,
+        f"{scenario_title}: median and p99 latency",
+        size=25,
+        weight="bold",
+    )
     svg.text(
         width / 2,
         63,
-        "Values are read from results/scenario_uniform.csv; each panel has its own scale",
+        f"Values are read from {source_path}; each panel has its own scale",
         size=14,
         fill="#4B5563",
     )
@@ -232,11 +247,19 @@ def draw_bar_figure(rows: dict[tuple[str, str], dict[str, str]], path: Path) -> 
 
 
 def draw_percentile_figure(
-    rows: dict[tuple[str, str], dict[str, str]], path: Path
+    rows: dict[tuple[str, str], dict[str, str]],
+    path: Path,
+    scenario_title: str,
 ) -> None:
     width, height = 1560, 650
     svg = Svg(width, height)
-    svg.text(width / 2, 38, "Uniform workload: latency percentile profiles", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        38,
+        f"{scenario_title}: latency percentile profiles",
+        size=25,
+        weight="bold",
+    )
     svg.text(
         width / 2,
         63,
@@ -358,13 +381,86 @@ def draw_uniform_model(path: Path) -> None:
     svg.write(path)
 
 
+def draw_clustered_model(path: Path) -> None:
+    width, height = 1200, 590
+    svg = Svg(width, height)
+    svg.text(width / 2, 40, "Clustered price-distribution workload", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        66,
+        "90% uniform on ticks 4,990–5,010; 10% uniform on ticks 1–9,999",
+        size=16,
+        fill="#374151",
+    )
+
+    left, right, top, bottom = 105, 1130, 125, 450
+    plot_width = right - left
+    plot_height = bottom - top
+    y_max = 100.0
+    bin_count = 51
+    central_bin = bin_count // 2
+    background_share = 10.0 / bin_count
+    central_share = 90.0 + background_share
+
+    for tick in range(5):
+        value = y_max * tick / 4
+        y = bottom - plot_height * value / y_max
+        svg.line(left, y, right, y, stroke="#D1D5DB", dash="4 4")
+        svg.text(left - 12, y + 5, f"{value:.0f}%", size=13, anchor="end", fill="#4B5563")
+    svg.line(left, top, left, bottom, stroke="#374151", stroke_width=1.5)
+    svg.line(left, bottom, right, bottom, stroke="#374151", stroke_width=1.5)
+
+    gap = 2
+    bar_width = plot_width / bin_count
+    for index in range(bin_count):
+        value = central_share if index == central_bin else background_share
+        bar_height = max(1.2, plot_height * value / y_max)
+        svg.rect(
+            left + index * bar_width + gap / 2,
+            bottom - bar_height,
+            bar_width - gap,
+            bar_height,
+            fill="#F97316" if index == central_bin else "#60A5FA",
+        )
+
+    center_x = left + (central_bin + 0.5) * bar_width
+    center_y = bottom - plot_height * central_share / y_max
+    svg.text(center_x + 18, center_y - 12, f"≈{central_share:.1f}%", size=14, anchor="start", weight="bold")
+    svg.line(center_x, center_y - 5, center_x, top + 8, stroke="#F97316", stroke_width=1.5, dash="4 4")
+
+    for value, label in ((1, "1"), (2500, "2,500"), (5000, "5,000"), (7500, "7,500"), (9999, "9,999")):
+        x = left + (value - 1) / (9999 - 1) * plot_width
+        svg.line(x, bottom, x, bottom + 6, stroke="#374151")
+        svg.text(x, bottom + 28, label, size=13, fill="#374151")
+
+    svg.text((left + right) / 2, 510, "Price tick", size=15)
+    svg.text(30, (top + bottom) / 2, "Expected share per equal-width bin", size=15, rotate=-90)
+    svg.rect(365, 535, 18, 18, fill="#F97316", rx=2)
+    svg.text(393, 549, "Bin containing the 21-tick cluster", size=13, anchor="start")
+    svg.rect(690, 535, 18, 18, fill="#60A5FA", rx=2)
+    svg.text(718, 549, "Full-range background", size=13, anchor="start")
+    svg.text(
+        width / 2,
+        580,
+        "The result CSV does not contain raw price draws; this is the theoretical mixture model.",
+        size=13,
+        fill="#6B7280",
+    )
+    svg.write(path)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--scenario",
+        choices=tuple(SCENARIO_TITLES),
+        default="uniform",
+        help="Scenario to plot (default: uniform)",
+    )
+    parser.add_argument(
         "--input",
         type=Path,
-        default=Path("results/scenario_uniform.csv"),
-        help="Benchmark result CSV (default: results/scenario_uniform.csv)",
+        help="Benchmark result CSV (default: results/scenario_<scenario>.csv)",
     )
     parser.add_argument(
         "--output-dir",
@@ -377,15 +473,24 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    rows = load_rows(args.input)
-    draw_bar_figure(rows, args.output_dir / "uniform_latency_p50_p99.svg")
-    draw_percentile_figure(rows, args.output_dir / "uniform_latency_percentiles.svg")
-    draw_uniform_model(args.output_dir / "uniform_workload_model.svg")
-    for name in (
-        "uniform_latency_p50_p99.svg",
-        "uniform_latency_percentiles.svg",
-        "uniform_workload_model.svg",
-    ):
+    input_path = args.input or Path(f"results/scenario_{args.scenario}.csv")
+    rows = load_rows(input_path)
+    prefix = args.scenario
+    scenario_title = SCENARIO_TITLES[args.scenario]
+    names = (
+        f"{prefix}_latency_p50_p99.svg",
+        f"{prefix}_latency_percentiles.svg",
+        f"{prefix}_workload_model.svg",
+    )
+
+    draw_bar_figure(rows, args.output_dir / names[0], scenario_title, input_path)
+    draw_percentile_figure(rows, args.output_dir / names[1], scenario_title)
+    if args.scenario == "uniform":
+        draw_uniform_model(args.output_dir / names[2])
+    else:
+        draw_clustered_model(args.output_dir / names[2])
+
+    for name in names:
         print(args.output_dir / name)
 
 
