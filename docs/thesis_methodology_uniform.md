@@ -62,9 +62,9 @@ At the start boundary, the first `LFENCE` prevents earlier instructions and load
 
 The `LatencyTracker::record` method reads the starting timestamp immediately before invoking the supplied operation and reads the ending timestamp immediately after that operation returns. For sample $j$, the recorded latency is therefore
 
-$$
+```math
 L_j = T_{j,\mathrm{end}} - T_{j,\mathrm{start}}.
-$$
+```
 
 Appending $L_j$ to the sample vector occurs after the end timestamp and is not included in the measured interval. Scenario setup, such as creating a new order book and inserting the 200 asks used to initialize the market-order workload, is also outside the timed interval. Work performed inside an order-book method—including validation, data-structure traversal, allocation, matching, and creation of fill records—is included. In the present market-order benchmark, the returned fill vector is discarded inside the measured closure, so its destruction is included as well.
 
@@ -74,32 +74,32 @@ The timing instructions and fences have their own non-zero cost. Because the imp
 
 The benchmark records TSC ticks directly and calibrates their rate against Rust's monotonic `Instant` clock. For each calibration sample, it reads both clocks, waits for a 50 ms interval, reads them again, and calculates
 
-$$
+```math
 f_{\mathrm{TSC},k}
 =
 \frac{T_{k,\mathrm{end}}-T_{k,\mathrm{start}}}
 {W_{k,\mathrm{end}}-W_{k,\mathrm{start}}},
-$$
+```
 
 where the numerator is measured in TSC ticks and the denominator is measured in nanoseconds. The result is expressed in ticks per nanosecond, which is numerically equivalent to gigahertz. Five calibration samples are collected and their median is used as the TSC frequency for the benchmark run:
 
-$$
+```math
 f_{\mathrm{TSC,GHz}}
 =
-\operatorname{median}\left(f_{\mathrm{TSC},1},\ldots,f_{\mathrm{TSC},5}\right).
-$$
+\mathrm{median}\left(f_{\mathrm{TSC},1},\ldots,f_{\mathrm{TSC},5}\right).
+```
 
 Using the median reduces the influence of a scheduling interruption or timing disturbance during one calibration interval. Once the TSC frequency has been established, a measured latency is converted using
 
-$$
+```math
 L_{\mathrm{ns}} = \frac{L_{\mathrm{TSC}}}{f_{\mathrm{TSC,GHz}}}.
-$$
+```
 
 For example, if the calibrated rate is 3.000 TSC ticks per nanosecond, a measurement of 210 ticks corresponds to
 
-$$
+```math
 L_{\mathrm{ns}} = \frac{210}{3.000} = 70.0\ \mathrm{ns}.
-$$
+```
 
 This approach measures the rate of the same counter used to time the operations. It does not use the instantaneous `cpu MHz` value reported by `/proc/cpuinfo`, so dynamic changes in the processor core's operating frequency do not distort the conversion. The calibrated TSC frequency is stored in the `tsc_ghz` column of every result CSV. TSC ticks remain the directly measured unit, while nanoseconds are derived from the calibrated relationship between the TSC and the monotonic clock.
 
@@ -109,9 +109,9 @@ On non-x86-64 systems, the implementation does not use `RDTSC`; it falls back to
 
 One latency value is retained for every measured operation. After all observations have been collected, the sample vector is sorted. For percentile $q$, the implementation selects the observation at index
 
-$$
+```math
 i_q = \left\lfloor q(n-1) \right\rfloor,
-$$
+```
 
 where $n$ is the number of samples. This procedure is used for the p50, p95, p99, p99.9, and p99.99 values. The minimum, maximum, and arithmetic mean are also calculated. One CSV row is written for each combination of scenario, implementation, and operation, containing the directly measured TSC statistics, the calibrated TSC frequency, and the corresponding derived nanosecond values.
 
@@ -172,11 +172,11 @@ Price distribution determines both the logical state of an order book and the ph
 
 In the uniform scenario, every valid integer price tick has the same probability of being selected. If $P$ denotes the generated price, then
 
-$$
-P \sim \operatorname{DiscreteUniform}\{1,2,\ldots,9999\},
+```math
+P \sim \mathrm{DiscreteUniform}\{1,2,\ldots,9999\},
 \qquad
 \Pr(P=p)=\frac{1}{9999}.
-$$
+```
 
 The expected price is 5,000 ticks. The distribution is intentionally spread across the complete supported price range rather than concentrated around a mid-price. It should therefore be interpreted as a synthetic low-locality stress workload, not as a realistic model of ordinary order placement. Its purpose is to expose how the four data structures behave when successive events frequently refer to distant price levels.
 
