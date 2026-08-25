@@ -11,7 +11,7 @@ use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
-use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
@@ -85,8 +85,8 @@ const MARKET_SEED_OFFSET: u64 = 1_000_000;
 fn main() {
     println!("=== Scenario 4.1d: Bursty Traffic ===\n");
 
-    let cpu_ghz = get_cpu_frequency();
-    println!("CPU frequency: {:.3} GHz", cpu_ghz);
+    let tsc_ghz = get_tsc_frequency();
+    println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
 
     #[cfg(target_os = "linux")]
     {
@@ -120,19 +120,19 @@ fn main() {
 
     println!("--- Fixed-Tick Array ---");
     let fixed = scenario_bursty::<FixedTickOrderbook>(seed);
-    print_results(&fixed, cpu_ghz);
+    print_results(&fixed, tsc_ghz);
 
     println!("\n--- Structure-of-Arrays (SoA) ---");
     let soa = scenario_bursty::<SoAOrderbook>(seed);
-    print_results(&soa, cpu_ghz);
+    print_results(&soa, tsc_ghz);
 
     println!("\n--- Hybrid (Hot/Cold) ---");
     let hybrid = scenario_bursty::<HybridOrderbook>(seed);
-    print_results(&hybrid, cpu_ghz);
+    print_results(&hybrid, tsc_ghz);
 
     println!("\n--- Tree-Based ---");
     let tree = scenario_bursty::<TreeOrderbook>(seed);
-    print_results(&tree, cpu_ghz);
+    print_results(&tree, tsc_ghz);
 
     println!("\n--- Comparison (p50 latency in cycles) ---");
     print_comparison(&fixed, &soa, &hybrid, &tree);
@@ -160,7 +160,7 @@ fn main() {
                         scenario: scenario_name,
                         implementation: impl_name,
                         operation: op,
-                        cpu_ghz,
+                        tsc_ghz,
                         percentiles: p,
                     });
                 }
@@ -320,56 +320,56 @@ fn scenario_bursty<O: OrderbookTrait>(seed: u64) -> ScenarioResults {
     }
 }
 
-fn print_results(results: &ScenarioResults, cpu_ghz: f64) {
+fn print_results(results: &ScenarioResults, tsc_ghz: f64) {
     println!("add_order():");
     println!(
         "  p50:  {:>8} cycles  ({:>7.1} ns)",
         results.add_order.p50,
-        cycles_to_ns(results.add_order.p50, cpu_ghz)
+        tsc_ticks_to_ns(results.add_order.p50, tsc_ghz)
     );
     println!(
         "  p99:  {:>8} cycles  ({:>7.1} ns)",
         results.add_order.p99,
-        cycles_to_ns(results.add_order.p99, cpu_ghz)
+        tsc_ticks_to_ns(results.add_order.p99, tsc_ghz)
     );
     println!(
         "  Max:  {:>8} cycles  ({:>7.1} ns)",
         results.add_order.max,
-        cycles_to_ns(results.add_order.max, cpu_ghz)
+        tsc_ticks_to_ns(results.add_order.max, tsc_ghz)
     );
 
     println!("\ncancel_order():");
     println!(
         "  p50:  {:>8} cycles  ({:>7.1} ns)",
         results.cancel_order.p50,
-        cycles_to_ns(results.cancel_order.p50, cpu_ghz)
+        tsc_ticks_to_ns(results.cancel_order.p50, tsc_ghz)
     );
     println!(
         "  p99:  {:>8} cycles  ({:>7.1} ns)",
         results.cancel_order.p99,
-        cycles_to_ns(results.cancel_order.p99, cpu_ghz)
+        tsc_ticks_to_ns(results.cancel_order.p99, tsc_ghz)
     );
     println!(
         "  Max:  {:>8} cycles  ({:>7.1} ns)",
         results.cancel_order.max,
-        cycles_to_ns(results.cancel_order.max, cpu_ghz)
+        tsc_ticks_to_ns(results.cancel_order.max, tsc_ghz)
     );
 
     println!("\nexecute_market_order():");
     println!(
         "  p50:  {:>8} cycles  ({:>7.1} ns)",
         results.market_order.p50,
-        cycles_to_ns(results.market_order.p50, cpu_ghz)
+        tsc_ticks_to_ns(results.market_order.p50, tsc_ghz)
     );
     println!(
         "  p99:  {:>8} cycles  ({:>7.1} ns)",
         results.market_order.p99,
-        cycles_to_ns(results.market_order.p99, cpu_ghz)
+        tsc_ticks_to_ns(results.market_order.p99, tsc_ghz)
     );
     println!(
         "  Max:  {:>8} cycles  ({:>7.1} ns)",
         results.market_order.max,
-        cycles_to_ns(results.market_order.max, cpu_ghz)
+        tsc_ticks_to_ns(results.market_order.max, tsc_ghz)
     );
 }
 

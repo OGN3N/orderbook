@@ -7,7 +7,7 @@
 ///
 /// NOTE: x86_64 only (uses _mm_prefetch intrinsics)
 use orderbook::perf::latency::LatencyTracker;
-use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
@@ -99,8 +99,8 @@ const ELEMENT_NUM: usize = 10_000;
 fn main() {
     println!("=== Phase 5.3: Software Prefetching ===\n");
 
-    let cpu_ghz = get_cpu_frequency();
-    println!("CPU frequency: {:.3} GHz", cpu_ghz);
+    let tsc_ghz = get_tsc_frequency();
+    println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
 
     #[cfg(target_os = "linux")]
     {
@@ -130,10 +130,10 @@ fn main() {
 
     let seed: u64 = 42;
 
-    bench_sequential_scan(cpu_ghz);
-    bench_random_access(seed, cpu_ghz);
-    bench_pointer_chase(seed, cpu_ghz);
-    bench_market_order_sim(seed, cpu_ghz);
+    bench_sequential_scan(tsc_ghz);
+    bench_random_access(seed, tsc_ghz);
+    bench_pointer_chase(seed, tsc_ghz);
+    bench_market_order_sim(seed, tsc_ghz);
 
     println!("\nInterpretation:");
     println!("  - Sequential scan: HW prefetcher handles contiguous arrays well");
@@ -150,7 +150,7 @@ fn main() {
 // the is_empty() check in execute_market_order).
 // Compare: no prefetch vs prefetch N levels ahead.
 
-fn bench_sequential_scan(cpu_ghz: f64) {
+fn bench_sequential_scan(tsc_ghz: f64) {
     println!("--- Test 1: Sequential Level Scan ---");
     println!("(Scan all 10K levels, check is_empty — simulates market order walk)\n");
 
@@ -235,21 +235,21 @@ fn bench_sequential_scan(cpu_ghz: f64) {
         "{:<20} | {:>8} cy {:>3.0}ns | {:>6}",
         "No prefetch",
         p_none.p50,
-        cycles_to_ns(p_none.p50, cpu_ghz),
+        tsc_ticks_to_ns(p_none.p50, tsc_ghz),
         "—"
     );
     println!(
         "{:<20} | {:>8} cy {:>3.0}ns | {:>5.2}x",
         "Prefetch +4",
         p_pf4.p50,
-        cycles_to_ns(p_pf4.p50, cpu_ghz),
+        tsc_ticks_to_ns(p_pf4.p50, tsc_ghz),
         p_none.p50 as f64 / p_pf4.p50.max(1) as f64,
     );
     println!(
         "{:<20} | {:>8} cy {:>3.0}ns | {:>5.2}x",
         "Prefetch +16",
         p_pf16.p50,
-        cycles_to_ns(p_pf16.p50, cpu_ghz),
+        tsc_ticks_to_ns(p_pf16.p50, tsc_ghz),
         p_none.p50 as f64 / p_pf16.p50.max(1) as f64,
     );
     println!();
@@ -261,7 +261,7 @@ fn bench_sequential_scan(cpu_ghz: f64) {
 // Access levels at random indices (simulates random add_order / depth_at_price).
 // We know the sequence ahead of time, so we can prefetch the next index.
 
-fn bench_random_access(seed: u64, cpu_ghz: f64) {
+fn bench_random_access(seed: u64, tsc_ghz: f64) {
     println!("--- Test 2: Random Price Lookup ---");
     println!("(Access levels at random indices, prefetch next while processing current)\n");
 
@@ -344,21 +344,21 @@ fn bench_random_access(seed: u64, cpu_ghz: f64) {
         "{:<20} | {:>8} cy {:>3.0}ns | {:>6}",
         "No prefetch",
         p_none.p50,
-        cycles_to_ns(p_none.p50, cpu_ghz),
+        tsc_ticks_to_ns(p_none.p50, tsc_ghz),
         "—"
     );
     println!(
         "{:<20} | {:>8} cy {:>3.0}ns | {:>5.2}x",
         "Prefetch +1",
         p_pf1.p50,
-        cycles_to_ns(p_pf1.p50, cpu_ghz),
+        tsc_ticks_to_ns(p_pf1.p50, tsc_ghz),
         p_none.p50 as f64 / p_pf1.p50.max(1) as f64,
     );
     println!(
         "{:<20} | {:>8} cy {:>3.0}ns | {:>5.2}x",
         "Prefetch +4",
         p_pf4.p50,
-        cycles_to_ns(p_pf4.p50, cpu_ghz),
+        tsc_ticks_to_ns(p_pf4.p50, tsc_ghz),
         p_none.p50 as f64 / p_pf4.p50.max(1) as f64,
     );
     println!();
@@ -375,7 +375,7 @@ fn bench_random_access(seed: u64, cpu_ghz: f64) {
 // Strategy: When processing level[i]'s orders, prefetch level[i+1]'s
 // heap data (the pointer stored in the Vec header).
 
-fn bench_pointer_chase(seed: u64, cpu_ghz: f64) {
+fn bench_pointer_chase(seed: u64, tsc_ghz: f64) {
     println!("--- Test 3: Pointer Chase (Vec header → heap orders) ---");
     println!("(Scan levels, read order quantities — prefetch next level's heap data)\n");
 
@@ -471,21 +471,21 @@ fn bench_pointer_chase(seed: u64, cpu_ghz: f64) {
         "{:<25} | {:>8} cy {:>3.0}ns | {:>6}",
         "No prefetch",
         p_none.p50,
-        cycles_to_ns(p_none.p50, cpu_ghz),
+        tsc_ticks_to_ns(p_none.p50, tsc_ghz),
         "—"
     );
     println!(
         "{:<25} | {:>8} cy {:>3.0}ns | {:>5.2}x",
         "Prefetch heap +2",
         p_pf.p50,
-        cycles_to_ns(p_pf.p50, cpu_ghz),
+        tsc_ticks_to_ns(p_pf.p50, tsc_ghz),
         p_none.p50 as f64 / p_pf.p50.max(1) as f64,
     );
     println!(
         "{:<25} | {:>8} cy {:>3.0}ns | {:>5.2}x",
         "Prefetch heap +8",
         p_pf8.p50,
-        cycles_to_ns(p_pf8.p50, cpu_ghz),
+        tsc_ticks_to_ns(p_pf8.p50, tsc_ghz),
         p_none.p50 as f64 / p_pf8.p50.max(1) as f64,
     );
     println!();
@@ -502,7 +502,7 @@ fn bench_pointer_chase(seed: u64, cpu_ghz: f64) {
 //   A) Prefetch the next level's Vec header (array is contiguous — probably useless)
 //   B) Prefetch the next non-empty level's order data (heap pointer — possibly useful)
 
-fn bench_market_order_sim(seed: u64, cpu_ghz: f64) {
+fn bench_market_order_sim(seed: u64, tsc_ghz: f64) {
     println!("--- Test 4: Market Order Sweep (full simulation) ---");
     println!("(Sweep 20 levels, consume orders — prefetch next level's heap orders)\n");
 
@@ -540,14 +540,14 @@ fn bench_market_order_sim(seed: u64, cpu_ghz: f64) {
         "{:<25} | {:>8} cy {:>3.0}ns | {:>6}",
         "No prefetch",
         p_none.p50,
-        cycles_to_ns(p_none.p50, cpu_ghz),
+        tsc_ticks_to_ns(p_none.p50, tsc_ghz),
         "—"
     );
     println!(
         "{:<25} | {:>8} cy {:>3.0}ns | {:>5.2}x",
         "Prefetch heap ahead",
         p_pf.p50,
-        cycles_to_ns(p_pf.p50, cpu_ghz),
+        tsc_ticks_to_ns(p_pf.p50, tsc_ghz),
         p_none.p50 as f64 / p_pf.p50.max(1) as f64,
     );
     println!();

@@ -5,7 +5,7 @@ use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
-use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
@@ -25,8 +25,8 @@ const PRICE_RANGE_MAX: u32 = 10_000;
 fn main() {
     println!("=== Scenario 4.1a: Uniform Random Distribution ===\n");
 
-    let cpu_ghz = get_cpu_frequency();
-    println!("CPU frequency: {:.3} GHz", cpu_ghz);
+    let tsc_ghz = get_tsc_frequency();
+    println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
 
     #[cfg(target_os = "linux")]
     {
@@ -45,7 +45,7 @@ fn main() {
     println!("\n");
 
     // Run scenario 4.1a: Uniform Random
-    run_scenario_uniform_random(cpu_ghz);
+    run_scenario_uniform_random(tsc_ghz);
 }
 
 // ============================================================================
@@ -80,7 +80,7 @@ fn main() {
 // - Hybrid: Cold zone will be heavily exercised
 // ============================================================================
 
-fn run_scenario_uniform_random(cpu_ghz: f64) {
+fn run_scenario_uniform_random(tsc_ghz: f64) {
     println!("=== Scenario 4.1a: Uniform Random Distribution ===");
     println!("Random prices across valid range [1, 10000)");
     println!("Tests worst-case TLB/cache behavior");
@@ -96,19 +96,19 @@ fn run_scenario_uniform_random(cpu_ghz: f64) {
 
     println!("--- Fixed-Tick Array ---");
     let fixed = scenario_uniform_random::<FixedTickOrderbook>(seed);
-    print_scenario_results(&fixed, cpu_ghz);
+    print_scenario_results(&fixed, tsc_ghz);
 
     println!("\n--- Structure-of-Arrays (SoA) ---");
     let soa = scenario_uniform_random::<SoAOrderbook>(seed);
-    print_scenario_results(&soa, cpu_ghz);
+    print_scenario_results(&soa, tsc_ghz);
 
     println!("\n--- Hybrid (Hot/Cold) ---");
     let hybrid = scenario_uniform_random::<HybridOrderbook>(seed);
-    print_scenario_results(&hybrid, cpu_ghz);
+    print_scenario_results(&hybrid, tsc_ghz);
 
     println!("\n--- Tree-Based ---");
     let tree = scenario_uniform_random::<TreeOrderbook>(seed);
-    print_scenario_results(&tree, cpu_ghz);
+    print_scenario_results(&tree, tsc_ghz);
 
     println!("\n--- Comparison (p50 latency in cycles) ---");
     print_comparison_table(&fixed, &soa, &hybrid, &tree);
@@ -133,7 +133,7 @@ fn run_scenario_uniform_random(cpu_ghz: f64) {
                         scenario: scenario_name,
                         implementation: impl_name,
                         operation: op,
-                        cpu_ghz,
+                        tsc_ghz,
                         percentiles: p,
                     });
                 }
@@ -251,32 +251,32 @@ fn scenario_uniform_random<O: OrderbookTrait>(seed: u64) -> ScenarioResults {
     }
 }
 
-fn print_scenario_results(results: &ScenarioResults, cpu_ghz: f64) {
+fn print_scenario_results(results: &ScenarioResults, tsc_ghz: f64) {
     println!("add_order():");
-    print_percentiles(&results.add_order, cpu_ghz);
+    print_percentiles(&results.add_order, tsc_ghz);
 
     println!("\ncancel_order():");
-    print_percentiles(&results.cancel_order, cpu_ghz);
+    print_percentiles(&results.cancel_order, tsc_ghz);
 
     println!("\nexecute_market_order():");
-    print_percentiles(&results.market_order, cpu_ghz);
+    print_percentiles(&results.market_order, tsc_ghz);
 }
 
-fn print_percentiles(p: &Percentiles, cpu_ghz: f64) {
+fn print_percentiles(p: &Percentiles, tsc_ghz: f64) {
     println!(
         "  p50:  {:>8} cycles  ({:>7.1} ns)",
         p.p50,
-        cycles_to_ns(p.p50, cpu_ghz)
+        tsc_ticks_to_ns(p.p50, tsc_ghz)
     );
     println!(
         "  p99:  {:>8} cycles  ({:>7.1} ns)",
         p.p99,
-        cycles_to_ns(p.p99, cpu_ghz)
+        tsc_ticks_to_ns(p.p99, tsc_ghz)
     );
     println!(
         "  Max:  {:>8} cycles  ({:>7.1} ns)",
         p.max,
-        cycles_to_ns(p.max, cpu_ghz)
+        tsc_ticks_to_ns(p.max, tsc_ghz)
     );
 }
 

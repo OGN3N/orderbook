@@ -13,7 +13,7 @@ use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
 use orderbook::orderbook::{Fill, OrderbookTrait};
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
-use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use orderbook::types::order::{IdCounter, Order, OrderId, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
@@ -76,8 +76,8 @@ const DIRECTIONS: usize = 2;
 fn main() {
     println!("=== Scenario 4.2b: Market Order Sweeps ===\n");
 
-    let cpu_ghz = get_cpu_frequency();
-    println!("CPU frequency: {:.3} GHz", cpu_ghz);
+    let tsc_ghz = get_tsc_frequency();
+    println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
 
     #[cfg(target_os = "linux")]
     {
@@ -136,19 +136,19 @@ fn main() {
 
     println!("--- Fixed-Tick Array ---");
     let fixed = run_sweep_benchmark::<FixedTickOrderbook>(samples_per_direction);
-    print_results(&fixed, cpu_ghz);
+    print_results(&fixed, tsc_ghz);
 
     println!("\n--- Structure-of-Arrays (SoA) ---");
     let soa = run_sweep_benchmark::<SoAOrderbook>(samples_per_direction);
-    print_results(&soa, cpu_ghz);
+    print_results(&soa, tsc_ghz);
 
     println!("\n--- Hybrid (Hot/Cold) ---");
     let hybrid = run_sweep_benchmark::<HybridOrderbook>(samples_per_direction);
-    print_results(&hybrid, cpu_ghz);
+    print_results(&hybrid, tsc_ghz);
 
     println!("\n--- Tree-Based ---");
     let tree = run_sweep_benchmark::<TreeOrderbook>(samples_per_direction);
-    print_results(&tree, cpu_ghz);
+    print_results(&tree, tsc_ghz);
 
     println!("\n--- Comparison: p50 latency by sweep and direction ---");
     print_comparison(&fixed, &soa, &hybrid, &tree);
@@ -156,7 +156,7 @@ fn main() {
     println!("\n--- Marginal Scaling (additional p50 cycles per added level) ---");
     print_marginal_scaling(&fixed, &soa, &hybrid, &tree);
 
-    export_csv(cpu_ghz, &fixed, &soa, &hybrid, &tree);
+    export_csv(tsc_ghz, &fixed, &soa, &hybrid, &tree);
 }
 
 fn samples_per_direction() -> usize {
@@ -496,53 +496,53 @@ fn sweep_quantity(levels: u32) -> u32 {
         .expect("sweep quantity overflowed u32")
 }
 
-fn print_results(results: &SweepResults, cpu_ghz: f64) {
-    print_case_results("Small", SMALL_SWEEP_LEVELS, &results.small, cpu_ghz);
+fn print_results(results: &SweepResults, tsc_ghz: f64) {
+    print_case_results("Small", SMALL_SWEEP_LEVELS, &results.small, tsc_ghz);
     println!();
-    print_case_results("Medium", MEDIUM_SWEEP_LEVELS, &results.medium, cpu_ghz);
+    print_case_results("Medium", MEDIUM_SWEEP_LEVELS, &results.medium, tsc_ghz);
     println!();
-    print_case_results("Large", LARGE_SWEEP_LEVELS, &results.large, cpu_ghz);
+    print_case_results("Large", LARGE_SWEEP_LEVELS, &results.large, tsc_ghz);
     println!();
     print_case_results(
         "Cross-zone",
         CROSS_ZONE_SWEEP_LEVELS,
         &results.cross_zone,
-        cpu_ghz,
+        tsc_ghz,
     );
 }
 
-fn print_case_results(name: &str, levels: u32, results: &DirectionalResults, cpu_ghz: f64) {
+fn print_case_results(name: &str, levels: u32, results: &DirectionalResults, tsc_ghz: f64) {
     println!("{name} sweep ({levels} levels):");
-    print_percentiles("market buy", &results.buy, cpu_ghz);
-    print_percentiles("market sell", &results.sell, cpu_ghz);
+    print_percentiles("market buy", &results.buy, tsc_ghz);
+    print_percentiles("market sell", &results.sell, tsc_ghz);
 }
 
-fn print_percentiles(name: &str, percentiles: &Percentiles, cpu_ghz: f64) {
+fn print_percentiles(name: &str, percentiles: &Percentiles, tsc_ghz: f64) {
     println!("  {name}:");
     println!(
         "    p50:    {:>8} cycles  ({:>8.1} ns)",
         percentiles.p50,
-        cycles_to_ns(percentiles.p50, cpu_ghz)
+        tsc_ticks_to_ns(percentiles.p50, tsc_ghz)
     );
     println!(
         "    p99:    {:>8} cycles  ({:>8.1} ns)",
         percentiles.p99,
-        cycles_to_ns(percentiles.p99, cpu_ghz)
+        tsc_ticks_to_ns(percentiles.p99, tsc_ghz)
     );
     println!(
         "    p99.9:  {:>8} cycles  ({:>8.1} ns)",
         percentiles.p999,
-        cycles_to_ns(percentiles.p999, cpu_ghz)
+        tsc_ticks_to_ns(percentiles.p999, tsc_ghz)
     );
     println!(
         "    p99.99: {:>8} cycles  ({:>8.1} ns)",
         percentiles.p9999,
-        cycles_to_ns(percentiles.p9999, cpu_ghz)
+        tsc_ticks_to_ns(percentiles.p9999, tsc_ghz)
     );
     println!(
         "    Max:    {:>8} cycles  ({:>8.1} ns)",
         percentiles.max,
-        cycles_to_ns(percentiles.max, cpu_ghz)
+        tsc_ticks_to_ns(percentiles.max, tsc_ghz)
     );
 }
 
@@ -780,7 +780,7 @@ fn print_marginal_row(
 }
 
 fn export_csv(
-    cpu_ghz: f64,
+    tsc_ghz: f64,
     fixed: &SweepResults,
     soa: &SweepResults,
     hybrid: &SweepResults,
@@ -801,7 +801,7 @@ fn export_csv(
                         scenario: "scenario_sweep",
                         implementation,
                         operation,
-                        cpu_ghz,
+                        tsc_ghz,
                         percentiles,
                     }) {
                         eprintln!("Warning: could not append sweep CSV row: {error}");

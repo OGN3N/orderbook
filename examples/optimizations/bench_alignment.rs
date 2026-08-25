@@ -12,7 +12,7 @@
 ///
 /// Run with: cargo run --release --example bench_alignment
 use orderbook::perf::latency::LatencyTracker;
-use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
@@ -111,8 +111,8 @@ struct OrderAligned64 {
 fn main() {
     println!("=== Phase 5.1: Alignment and Padding ===\n");
 
-    let cpu_ghz = get_cpu_frequency();
-    println!("CPU frequency: {:.3} GHz", cpu_ghz);
+    let tsc_ghz = get_tsc_frequency();
+    println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
 
     #[cfg(target_os = "linux")]
     {
@@ -224,7 +224,7 @@ fn main() {
         &default_seq,
         &packed_seq,
         &aligned_seq,
-        cpu_ghz,
+        tsc_ghz,
     );
 
     println!(
@@ -244,7 +244,7 @@ fn main() {
         &default_rnd,
         &packed_rnd,
         &aligned_rnd,
-        cpu_ghz,
+        tsc_ghz,
     );
 
     println!(
@@ -259,7 +259,7 @@ fn main() {
     let default_ins = bench_insert_default(seed);
     let packed_ins = bench_insert_packed(seed);
     let aligned_ins = bench_insert_aligned(seed);
-    print_bench_comparison("Insert", &default_ins, &packed_ins, &aligned_ins, cpu_ghz);
+    print_bench_comparison("Insert", &default_ins, &packed_ins, &aligned_ins, tsc_ghz);
 
     println!("\n--- Summary ---");
     print_summary(
@@ -272,7 +272,7 @@ fn main() {
         &default_ins,
         &packed_ins,
         &aligned_ins,
-        cpu_ghz,
+        tsc_ghz,
     );
 }
 
@@ -616,7 +616,7 @@ fn print_bench_comparison(
     default: &BenchResult,
     packed: &BenchResult,
     aligned: &BenchResult,
-    cpu_ghz: f64,
+    tsc_ghz: f64,
 ) {
     println!(
         "{:<15} | {:>14} | {:>14} | {:>14}",
@@ -627,31 +627,31 @@ fn print_bench_comparison(
         "{:<15} | {:>8} cy {:>4.0}ns | {:>8} cy {:>4.0}ns | {:>8} cy {:>4.0}ns",
         "p50",
         default.p50,
-        cycles_to_ns(default.p50, cpu_ghz),
+        tsc_ticks_to_ns(default.p50, tsc_ghz),
         packed.p50,
-        cycles_to_ns(packed.p50, cpu_ghz),
+        tsc_ticks_to_ns(packed.p50, tsc_ghz),
         aligned.p50,
-        cycles_to_ns(aligned.p50, cpu_ghz),
+        tsc_ticks_to_ns(aligned.p50, tsc_ghz),
     );
     println!(
         "{:<15} | {:>8} cy {:>4.0}ns | {:>8} cy {:>4.0}ns | {:>8} cy {:>4.0}ns",
         "p99",
         default.p99,
-        cycles_to_ns(default.p99, cpu_ghz),
+        tsc_ticks_to_ns(default.p99, tsc_ghz),
         packed.p99,
-        cycles_to_ns(packed.p99, cpu_ghz),
+        tsc_ticks_to_ns(packed.p99, tsc_ghz),
         aligned.p99,
-        cycles_to_ns(aligned.p99, cpu_ghz),
+        tsc_ticks_to_ns(aligned.p99, tsc_ghz),
     );
     println!(
         "{:<15} | {:>8} cy {:>4.0}ns | {:>8} cy {:>4.0}ns | {:>8} cy {:>4.0}ns",
         "Max",
         default.max,
-        cycles_to_ns(default.max, cpu_ghz),
+        tsc_ticks_to_ns(default.max, tsc_ghz),
         packed.max,
-        cycles_to_ns(packed.max, cpu_ghz),
+        tsc_ticks_to_ns(packed.max, tsc_ghz),
         aligned.max,
-        cycles_to_ns(aligned.max, cpu_ghz),
+        tsc_ticks_to_ns(aligned.max, tsc_ghz),
     );
 }
 
@@ -665,7 +665,7 @@ fn print_summary(
     def_ins: &BenchResult,
     pack_ins: &BenchResult,
     align_ins: &BenchResult,
-    cpu_ghz: f64,
+    _tsc_ghz: f64,
 ) {
     println!("\np50 comparison (cycles):");
     println!(

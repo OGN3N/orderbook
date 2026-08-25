@@ -8,7 +8,7 @@
 /// NOTE: Requires Linux with THP in "madvise" or "always" mode.
 /// Check: cat /sys/kernel/mm/transparent_hugepage/enabled
 use orderbook::perf::latency::LatencyTracker;
-use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
@@ -115,8 +115,8 @@ const SLOT_SIZE: usize = std::mem::size_of::<Slot>();
 fn main() {
     println!("=== Phase 5.2: Huge Pages ===\n");
 
-    let cpu_ghz = get_cpu_frequency();
-    println!("CPU frequency: {:.3} GHz", cpu_ghz);
+    let tsc_ghz = get_tsc_frequency();
+    println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
 
     #[cfg(target_os = "linux")]
     {
@@ -145,14 +145,14 @@ fn main() {
     println!("Huge page: 2 MB\n");
 
     #[cfg(target_os = "linux")]
-    run_benchmarks(cpu_ghz);
+    run_benchmarks(tsc_ghz);
 
     #[cfg(not(target_os = "linux"))]
     println!("Huge page benchmarks require Linux. Skipping.");
 }
 
 #[cfg(target_os = "linux")]
-fn run_benchmarks(cpu_ghz: f64) {
+fn run_benchmarks(tsc_ghz: f64) {
     let seed: u64 = 42;
 
     // Test different array sizes
@@ -171,15 +171,15 @@ fn run_benchmarks(cpu_ghz: f64) {
     println!("{:-<70}", "");
 
     for &(num_slots, label) in &sizes {
-        let (normal_p50, huge_p50) = bench_sequential(num_slots, seed, cpu_ghz);
+        let (normal_p50, huge_p50) = bench_sequential(num_slots, seed, tsc_ghz);
         let speedup = normal_p50 as f64 / huge_p50.max(1) as f64;
         println!(
             "{:<25} | {:>8} cy {:>3.0}ns | {:>8} cy {:>3.0}ns | {:>6.2}x",
             label,
             normal_p50,
-            cycles_to_ns(normal_p50, cpu_ghz),
+            tsc_ticks_to_ns(normal_p50, tsc_ghz),
             huge_p50,
-            cycles_to_ns(huge_p50, cpu_ghz),
+            tsc_ticks_to_ns(huge_p50, tsc_ghz),
             speedup,
         );
     }
@@ -193,15 +193,15 @@ fn run_benchmarks(cpu_ghz: f64) {
     println!("{:-<70}", "");
 
     for &(num_slots, label) in &sizes {
-        let (normal_p50, huge_p50) = bench_random(num_slots, seed, cpu_ghz);
+        let (normal_p50, huge_p50) = bench_random(num_slots, seed, tsc_ghz);
         let speedup = normal_p50 as f64 / huge_p50.max(1) as f64;
         println!(
             "{:<25} | {:>8} cy {:>3.0}ns | {:>8} cy {:>3.0}ns | {:>6.2}x",
             label,
             normal_p50,
-            cycles_to_ns(normal_p50, cpu_ghz),
+            tsc_ticks_to_ns(normal_p50, tsc_ghz),
             huge_p50,
-            cycles_to_ns(huge_p50, cpu_ghz),
+            tsc_ticks_to_ns(huge_p50, tsc_ghz),
             speedup,
         );
     }
@@ -215,15 +215,15 @@ fn run_benchmarks(cpu_ghz: f64) {
     println!("{:-<70}", "");
 
     for &(num_slots, label) in &sizes {
-        let (normal_p50, huge_p50) = bench_strided(num_slots, seed, cpu_ghz);
+        let (normal_p50, huge_p50) = bench_strided(num_slots, seed, tsc_ghz);
         let speedup = normal_p50 as f64 / huge_p50.max(1) as f64;
         println!(
             "{:<25} | {:>8} cy {:>3.0}ns | {:>8} cy {:>3.0}ns | {:>6.2}x",
             label,
             normal_p50,
-            cycles_to_ns(normal_p50, cpu_ghz),
+            tsc_ticks_to_ns(normal_p50, tsc_ghz),
             huge_p50,
-            cycles_to_ns(huge_p50, cpu_ghz),
+            tsc_ticks_to_ns(huge_p50, tsc_ghz),
             speedup,
         );
     }
@@ -248,7 +248,7 @@ fn run_benchmarks(cpu_ghz: f64) {
 }
 
 #[cfg(target_os = "linux")]
-fn bench_sequential(num_slots: usize, _seed: u64, _cpu_ghz: f64) -> (u64, u64) {
+fn bench_sequential(num_slots: usize, _seed: u64, _tsc_ghz: f64) -> (u64, u64) {
     let size = num_slots * SLOT_SIZE;
 
     // Normal pages
@@ -301,7 +301,7 @@ fn bench_sequential(num_slots: usize, _seed: u64, _cpu_ghz: f64) -> (u64, u64) {
 }
 
 #[cfg(target_os = "linux")]
-fn bench_random(num_slots: usize, seed: u64, _cpu_ghz: f64) -> (u64, u64) {
+fn bench_random(num_slots: usize, seed: u64, _tsc_ghz: f64) -> (u64, u64) {
     let size = num_slots * SLOT_SIZE;
     let mut rng = StdRng::seed_from_u64(seed);
 
@@ -359,7 +359,7 @@ fn bench_random(num_slots: usize, seed: u64, _cpu_ghz: f64) -> (u64, u64) {
 }
 
 #[cfg(target_os = "linux")]
-fn bench_strided(num_slots: usize, _seed: u64, _cpu_ghz: f64) -> (u64, u64) {
+fn bench_strided(num_slots: usize, _seed: u64, _tsc_ghz: f64) -> (u64, u64) {
     let size = num_slots * SLOT_SIZE;
 
     // Stride of 170 slots × 24 bytes = 4080 bytes ≈ 1 page

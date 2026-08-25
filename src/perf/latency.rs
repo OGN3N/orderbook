@@ -1,61 +1,65 @@
-use super::{rdtsc, rdtsc_end, rdtsc_start};
+use super::{rdtsc_end, rdtsc_start};
 
-/// Get CPU frequency from /proc/cpuinfo (Linux only)
-/// Returns frequency in GHz, or None if not available
-#[cfg(target_os = "linux")]
-pub fn get_cpu_frequency_from_proc() -> Option<f64> {
-    use std::fs;
+#[cfg(test)]
+use super::rdtsc;
 
-    let cpuinfo = fs::read_to_string("/proc/cpuinfo").ok()?;
+const TSC_CALIBRATION_SAMPLES: usize = 5;
+const TSC_CALIBRATION_INTERVAL_MS: u64 = 50;
 
-    for line in cpuinfo.lines() {
-        if line.starts_with("cpu MHz") {
-            let parts: Vec<&str> = line.split(':').collect();
-            if parts.len() == 2 {
-                let mhz = parts[1].trim().parse::<f64>().ok()?;
-                return Some(mhz / 1000.0); // Convert MHz to GHz
-            }
-        }
-    }
-    None
+/// Calibrate the x86 time-stamp counter against Rust's monotonic clock.
+///
+/// The returned value is expressed in GHz, which is numerically equal to TSC
+/// ticks per nanosecond. Unlike `/proc/cpuinfo`'s `cpu MHz`, this measures the
+/// rate of the counter that actually supplies the benchmark timestamps and is
+/// therefore unaffected by core turbo-frequency changes.
+///
+/// On non-x86 targets, `rdtsc()` already returns elapsed nanoseconds, so the
+/// corresponding rate is exactly one tick per nanosecond (1.0 GHz).
+pub fn get_tsc_frequency() -> f64 {
+    estimate_tsc_frequency()
 }
 
-/// Get CPU frequency - tries /proc/cpuinfo first, falls back to estimation
-pub fn get_cpu_frequency() -> f64 {
-    #[cfg(target_os = "linux")]
+pub fn estimate_tsc_frequency() -> f64 {
+    #[cfg(not(target_arch = "x86_64"))]
     {
-        if let Some(freq) = get_cpu_frequency_from_proc() {
-            return freq;
-        }
+        return 1.0;
     }
 
-    // Fallback: estimate by measurement
-    estimate_cpu_frequency()
+    #[cfg(target_arch = "x86_64")]
+    {
+        let mut estimates = Vec::with_capacity(TSC_CALIBRATION_SAMPLES);
+
+        for _ in 0..TSC_CALIBRATION_SAMPLES {
+            estimates.push(estimate_tsc_frequency_once());
+        }
+
+        estimates.sort_by(f64::total_cmp);
+        estimates[estimates.len() / 2]
+    }
 }
 
-/// Estimate CPU frequency in GHz by measuring cycles over a known time period
-pub fn estimate_cpu_frequency() -> f64 {
+#[cfg(target_arch = "x86_64")]
+fn estimate_tsc_frequency_once() -> f64 {
     use std::time::Instant;
 
     let start_time = Instant::now();
-    let start_cycles = rdtsc();
+    let start_ticks = rdtsc_start();
 
-    // Sleep for 10ms to get a good measurement
-    std::thread::sleep(std::time::Duration::from_millis(10));
+    std::thread::sleep(std::time::Duration::from_millis(
+        TSC_CALIBRATION_INTERVAL_MS,
+    ));
 
-    let end_cycles = rdtsc();
-    let end_time = Instant::now();
+    let end_ticks = rdtsc_end();
+    let elapsed_ns = start_time.elapsed().as_nanos() as f64;
+    let elapsed_ticks = end_ticks.saturating_sub(start_ticks) as f64;
 
-    let elapsed_ns = end_time.duration_since(start_time).as_nanos() as f64;
-    let elapsed_cycles = (end_cycles - start_cycles) as f64;
-
-    // GHz = (cycles / nanoseconds)
-    elapsed_cycles / elapsed_ns
+    // GHz is numerically equal to ticks per nanosecond.
+    elapsed_ticks / elapsed_ns
 }
 
-/// Convert CPU cycles to nanoseconds given a CPU frequency in GHz
-pub fn cycles_to_ns(cycles: u64, cpu_ghz: f64) -> f64 {
-    cycles as f64 / cpu_ghz
+/// Convert time-stamp-counter ticks to nanoseconds using the calibrated TSC rate.
+pub fn tsc_ticks_to_ns(ticks: u64, tsc_ghz: f64) -> f64 {
+    ticks as f64 / tsc_ghz
 }
 
 pub struct LatencyTracker {
@@ -154,6 +158,17 @@ impl LatencyTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_tsc_frequency_and_conversion() {
+        let tsc_ghz = get_tsc_frequency();
+        assert!(tsc_ghz.is_finite());
+        assert!(tsc_ghz > 0.0);
+
+        let ticks = (tsc_ghz * 100.0).round() as u64;
+        let nanoseconds = tsc_ticks_to_ns(ticks, tsc_ghz);
+        assert!((nanoseconds - 100.0).abs() < 1.0);
+    }
 
     #[test]
     fn test_latency_tracker_basic() {

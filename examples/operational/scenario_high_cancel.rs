@@ -12,7 +12,7 @@ use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
 use orderbook::orderbook::{Fill, OrderbookTrait};
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
-use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use orderbook::types::order::{IdCounter, Order, OrderId, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
@@ -78,8 +78,8 @@ const TOTAL_MEASURED_ROUNDS: usize = BOOK_BATCHES * MEASURED_ROUNDS_PER_BOOK;
 fn main() {
     println!("=== Scenario 4.2a: High Cancellation Ratio (10:1) ===\n");
 
-    let cpu_ghz = get_cpu_frequency();
-    println!("CPU frequency: {:.3} GHz", cpu_ghz);
+    let tsc_ghz = get_tsc_frequency();
+    println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
 
     #[cfg(target_os = "linux")]
     {
@@ -128,25 +128,25 @@ fn main() {
 
     println!("--- Fixed-Tick Array ---");
     let fixed = scenario_high_cancel::<FixedTickOrderbook>(seed);
-    print_results(&fixed, cpu_ghz);
+    print_results(&fixed, tsc_ghz);
 
     println!("\n--- Structure-of-Arrays (SoA) ---");
     let soa = scenario_high_cancel::<SoAOrderbook>(seed);
-    print_results(&soa, cpu_ghz);
+    print_results(&soa, tsc_ghz);
 
     println!("\n--- Hybrid (Hot/Cold) ---");
     let hybrid = scenario_high_cancel::<HybridOrderbook>(seed);
-    print_results(&hybrid, cpu_ghz);
+    print_results(&hybrid, tsc_ghz);
 
     println!("\n--- Tree-Based ---");
     let tree = scenario_high_cancel::<TreeOrderbook>(seed);
-    print_results(&tree, cpu_ghz);
+    print_results(&tree, tsc_ghz);
 
     println!("\n--- Comparison (p50 latency in cycles) ---");
     print_comparison(&fixed, &soa, &hybrid, &tree);
 
     println!("\n--- Cancel Performance Focus (most critical for HFT) ---");
-    print_cancel_focus(&fixed, &soa, &hybrid, &tree, cpu_ghz);
+    print_cancel_focus(&fixed, &soa, &hybrid, &tree, tsc_ghz);
 
     // Export results to CSV
     let scenario_name = "scenario_high_cancel";
@@ -168,7 +168,7 @@ fn main() {
                         scenario: scenario_name,
                         implementation: impl_name,
                         operation: op,
-                        cpu_ghz,
+                        tsc_ghz,
                         percentiles: p,
                     });
                 }
@@ -362,40 +362,40 @@ fn assert_expected_fill(fills: &[Fill], expected_maker_ids: &mut Vec<OrderId>) {
     expected_maker_ids.swap_remove(position);
 }
 
-fn print_results(results: &ScenarioResults, cpu_ghz: f64) {
-    print_operation("add_order()", &results.add_order, cpu_ghz);
+fn print_results(results: &ScenarioResults, tsc_ghz: f64) {
+    print_operation("add_order()", &results.add_order, tsc_ghz);
     println!();
-    print_operation("cancel_order()", &results.cancel_order, cpu_ghz);
+    print_operation("cancel_order()", &results.cancel_order, tsc_ghz);
     println!();
-    print_operation("execute_market_order()", &results.market_order, cpu_ghz);
+    print_operation("execute_market_order()", &results.market_order, tsc_ghz);
 }
 
-fn print_operation(name: &str, percentiles: &Percentiles, cpu_ghz: f64) {
+fn print_operation(name: &str, percentiles: &Percentiles, tsc_ghz: f64) {
     println!("{name}:");
     println!(
         "  p50:  {:>8} cycles  ({:>7.1} ns)",
         percentiles.p50,
-        cycles_to_ns(percentiles.p50, cpu_ghz)
+        tsc_ticks_to_ns(percentiles.p50, tsc_ghz)
     );
     println!(
         "  p99:  {:>8} cycles  ({:>7.1} ns)",
         percentiles.p99,
-        cycles_to_ns(percentiles.p99, cpu_ghz)
+        tsc_ticks_to_ns(percentiles.p99, tsc_ghz)
     );
     println!(
         "  p99.9:{:>8} cycles  ({:>7.1} ns)",
         percentiles.p999,
-        cycles_to_ns(percentiles.p999, cpu_ghz)
+        tsc_ticks_to_ns(percentiles.p999, tsc_ghz)
     );
     println!(
         "  p99.99:{:>7} cycles  ({:>7.1} ns)",
         percentiles.p9999,
-        cycles_to_ns(percentiles.p9999, cpu_ghz)
+        tsc_ticks_to_ns(percentiles.p9999, tsc_ghz)
     );
     println!(
         "  Max:  {:>8} cycles  ({:>7.1} ns)",
         percentiles.max,
-        cycles_to_ns(percentiles.max, cpu_ghz)
+        tsc_ticks_to_ns(percentiles.max, tsc_ghz)
     );
 }
 
@@ -441,7 +441,7 @@ fn print_cancel_focus(
     soa: &ScenarioResults,
     hybrid: &ScenarioResults,
     tree: &ScenarioResults,
-    cpu_ghz: f64,
+    tsc_ghz: f64,
 ) {
     println!(
         "{:<12} | {:>10} | {:>10} | {:>10} | {:>10}",
@@ -483,9 +483,9 @@ fn print_cancel_focus(
     println!(
         "{:<12} | {:>7.0} ns | {:>7.0} ns | {:>7.0} ns | {:>7.0} ns",
         "p50 (ns)",
-        cycles_to_ns(fixed.cancel_order.p50, cpu_ghz),
-        cycles_to_ns(soa.cancel_order.p50, cpu_ghz),
-        cycles_to_ns(hybrid.cancel_order.p50, cpu_ghz),
-        cycles_to_ns(tree.cancel_order.p50, cpu_ghz),
+        tsc_ticks_to_ns(fixed.cancel_order.p50, tsc_ghz),
+        tsc_ticks_to_ns(soa.cancel_order.p50, tsc_ghz),
+        tsc_ticks_to_ns(hybrid.cancel_order.p50, tsc_ghz),
+        tsc_ticks_to_ns(tree.cancel_order.p50, tsc_ghz),
     );
 }

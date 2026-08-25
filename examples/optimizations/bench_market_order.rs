@@ -5,7 +5,7 @@
 ///
 /// Run with: cargo run --release --example bench_market_order
 use orderbook::perf::latency::LatencyTracker;
-use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 
 const NUM_LEVELS: usize = 100;
 const ORDERS_PER_LEVEL: usize = 1;
@@ -266,8 +266,8 @@ fn build_book(
 fn main() {
     println!("=== Phase 5.1: execute_market_order — Current vs Optimized ===\n");
 
-    let cpu_ghz = get_cpu_frequency();
-    println!("CPU frequency: {:.3} GHz", cpu_ghz);
+    let tsc_ghz = get_tsc_frequency();
+    println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
 
     #[cfg(target_os = "linux")]
     {
@@ -334,9 +334,9 @@ fn main() {
             "{:<12} | {:>8} cy {:>5.0}ns | {:>8} cy {:>5.0}ns | {:>6.1}x",
             format!("{} lvl", sweep_levels),
             current_p.p50,
-            cycles_to_ns(current_p.p50, cpu_ghz),
+            tsc_ticks_to_ns(current_p.p50, tsc_ghz),
             optimized_p.p50,
-            cycles_to_ns(optimized_p.p50, cpu_ghz),
+            tsc_ticks_to_ns(optimized_p.p50, tsc_ghz),
             speedup,
         );
     }
@@ -371,17 +371,17 @@ fn main() {
     println!(
         "  Current  (scan 0..5100):  {:>6} cy ({:.0} ns)",
         sc.p50,
-        cycles_to_ns(sc.p50, cpu_ghz)
+        tsc_ticks_to_ns(sc.p50, tsc_ghz)
     );
     println!(
         "  Optimized (skip to 5000): {:>6} cy ({:.0} ns)",
         so.p50,
-        cycles_to_ns(so.p50, cpu_ghz)
+        tsc_ticks_to_ns(so.p50, tsc_ghz)
     );
     println!(
         "  Scan savings:             {:>6} cy ({:.0} ns) — {:.1}x speedup",
         sc.p50.saturating_sub(so.p50),
-        cycles_to_ns(sc.p50.saturating_sub(so.p50), cpu_ghz),
+        tsc_ticks_to_ns(sc.p50.saturating_sub(so.p50), tsc_ghz),
         sc.p50 as f64 / so.p50.max(1) as f64,
     );
 
@@ -420,17 +420,17 @@ fn main() {
         "{:<10} | {:>8} cy {:>3.0}ns | {:>8} cy {:>3.0}ns",
         "p50",
         dc.p50,
-        cycles_to_ns(dc.p50, cpu_ghz),
+        tsc_ticks_to_ns(dc.p50, tsc_ghz),
         do_.p50,
-        cycles_to_ns(do_.p50, cpu_ghz)
+        tsc_ticks_to_ns(do_.p50, tsc_ghz)
     );
     println!(
         "{:<10} | {:>8} cy {:>3.0}ns | {:>8} cy {:>3.0}ns",
         "p99",
         dc.p99,
-        cycles_to_ns(dc.p99, cpu_ghz),
+        tsc_ticks_to_ns(dc.p99, tsc_ghz),
         do_.p99,
-        cycles_to_ns(do_.p99, cpu_ghz)
+        tsc_ticks_to_ns(do_.p99, tsc_ghz)
     );
     let deep_speedup = dc.p50 as f64 / do_.p50.max(1) as f64;
     println!("  Speedup: {:.1}x", deep_speedup);

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560">
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="600.00" y="40.00" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#111827" text-anchor="middle">Uniform price-distribution workload</text>
+  <text x="600.00" y="66.00" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#374151" text-anchor="middle">P ~ DiscreteUniform({1, …, 9,999}); Pr(P = p) = 1/9,999</text>
+  <line x1="105.00" y1="430.00" x2="1130.00" y2="430.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="93.00" y="435.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="end">0.0%</text>
+  <line x1="105.00" y1="369.00" x2="1130.00" y2="369.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="93.00" y="374.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="end">0.5%</text>
+  <line x1="105.00" y1="308.00" x2="1130.00" y2="308.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="93.00" y="313.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="end">1.0%</text>
+  <line x1="105.00" y1="247.00" x2="1130.00" y2="247.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="93.00" y="252.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="end">1.5%</text>
+  <line x1="105.00" y1="186.00" x2="1130.00" y2="186.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="93.00" y="191.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="end">2.0%</text>
+  <line x1="105.00" y1="125.00" x2="1130.00" y2="125.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="93.00" y="130.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="end">2.5%</text>
+  <line x1="105.00" y1="125.00" x2="105.00" y2="430.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="105.00" y1="430.00" x2="1130.00" y2="430.00" stroke="#374151" stroke-width="1.5"/>
+  <rect x="106.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="126.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="147.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="167.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="188.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="208.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="229.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="249.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="270.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="290.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="311.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="331.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="352.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="372.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="393.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="413.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="434.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="454.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="475.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="495.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="516.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="536.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="557.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="577.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="598.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="618.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="639.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="659.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="680.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="700.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="721.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="741.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="762.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="782.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="803.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="823.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="844.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="864.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="885.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="905.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="926.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="946.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="967.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="987.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="1008.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="1028.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="1049.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="1069.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="1090.00" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="1110.50" y="186.00" width="18.50" height="244.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <line x1="105.00" y1="430.00" x2="105.00" y2="436.00" stroke="#374151" stroke-width="1"/>
+  <text x="105.00" y="458.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#374151" text-anchor="middle">1</text>
+  <line x1="361.20" y1="430.00" x2="361.20" y2="436.00" stroke="#374151" stroke-width="1"/>
+  <text x="361.20" y="458.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#374151" text-anchor="middle">2,500</text>
+  <line x1="617.50" y1="430.00" x2="617.50" y2="436.00" stroke="#374151" stroke-width="1"/>
+  <text x="617.50" y="458.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#374151" text-anchor="middle">5,000</text>
+  <line x1="873.80" y1="430.00" x2="873.80" y2="436.00" stroke="#374151" stroke-width="1"/>
+  <text x="873.80" y="458.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#374151" text-anchor="middle">7,500</text>
+  <line x1="1130.00" y1="430.00" x2="1130.00" y2="436.00" stroke="#374151" stroke-width="1"/>
+  <text x="1130.00" y="458.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#374151" text-anchor="middle">9,999</text>
+  <text x="617.50" y="490.00" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="normal" fill="#111827" text-anchor="middle">Price tick</text>
+  <text x="30.00" y="277.50" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="normal" fill="#111827" text-anchor="middle" transform="rotate(-90.0 30.00 277.50)">Expected share per equal-width bin</text>
+  <text x="600.00" y="535.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">The result CSV does not contain raw price draws; this is the theoretical workload model.</text>
+</svg>

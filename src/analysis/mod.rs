@@ -1,4 +1,4 @@
-use crate::perf::{cycles_to_ns, latency::Percentiles};
+use crate::perf::{latency::Percentiles, tsc_ticks_to_ns};
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 
@@ -7,7 +7,7 @@ pub struct ResultRow<'a> {
     pub scenario: &'a str,
     pub implementation: &'a str,
     pub operation: &'a str,
-    pub cpu_ghz: f64,
+    pub tsc_ghz: f64,
     pub percentiles: &'a Percentiles,
 }
 
@@ -27,8 +27,8 @@ impl CsvExporter {
         let mut writer = BufWriter::new(file);
         writeln!(
             writer,
-            "scenario,implementation,operation,cpu_ghz,\
-             min_cy,p50_cy,p95_cy,p99_cy,p999_cy,p9999_cy,max_cy,mean_cy,\
+            "scenario,implementation,operation,tsc_ghz,\
+             min_tsc,p50_tsc,p95_tsc,p99_tsc,p999_tsc,p9999_tsc,max_tsc,mean_tsc,\
              min_ns,p50_ns,p95_ns,p99_ns,p999_ns,p9999_ns,max_ns,mean_ns"
         )?;
         println!("Results → {}", path);
@@ -37,7 +37,7 @@ impl CsvExporter {
 
     pub fn append(&mut self, row: &ResultRow) -> std::io::Result<()> {
         let p = row.percentiles;
-        let g = row.cpu_ghz;
+        let g = row.tsc_ghz;
         writeln!(
             self.writer,
             "{},{},{},{:.3},{},{},{},{},{},{},{},{:.1},{:.1},{:.1},{:.1},{:.1},{:.1},{:.1},{:.1},{:.1}",
@@ -53,13 +53,13 @@ impl CsvExporter {
             p.p9999,
             p.max,
             p.mean,
-            cycles_to_ns(p.min, g),
-            cycles_to_ns(p.p50, g),
-            cycles_to_ns(p.p95, g),
-            cycles_to_ns(p.p99, g),
-            cycles_to_ns(p.p999, g),
-            cycles_to_ns(p.p9999, g),
-            cycles_to_ns(p.max, g),
+            tsc_ticks_to_ns(p.min, g),
+            tsc_ticks_to_ns(p.p50, g),
+            tsc_ticks_to_ns(p.p95, g),
+            tsc_ticks_to_ns(p.p99, g),
+            tsc_ticks_to_ns(p.p999, g),
+            tsc_ticks_to_ns(p.p9999, g),
+            tsc_ticks_to_ns(p.max, g),
             p.mean / g,
         )
     }

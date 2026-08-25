@@ -6,19 +6,19 @@
 //! Run with: cargo run --release --example scenario_buildup
 
 use orderbook::analysis::{CsvExporter, ResultRow};
+use orderbook::orderbook::OrderbookTrait;
+use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook;
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
-use orderbook::orderbook::OrderbookTrait;
-use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
-use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
+use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 
 const MIN_PRICE: u32 = 1;
 const MID_PRICE: u32 = 5_000;
@@ -75,8 +75,8 @@ const CSV_OPERATIONS: [&str; 5] = [
 fn main() {
     println!("=== Scenario 4.2c: Order Book Build-Up ===\n");
 
-    let cpu_ghz = get_cpu_frequency();
-    println!("CPU frequency: {:.3} GHz", cpu_ghz);
+    let tsc_ghz = get_tsc_frequency();
+    println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
 
     #[cfg(target_os = "linux")]
     {
@@ -131,19 +131,19 @@ fn main() {
 
     println!("--- Fixed-Tick Array ---");
     let fixed = run_buildup_benchmark::<FixedTickOrderbook>(BASE_SEED, samples_per_point);
-    print_results(&fixed, cpu_ghz);
+    print_results(&fixed, tsc_ghz);
 
     println!("\n--- Structure-of-Arrays (SoA) ---");
     let soa = run_buildup_benchmark::<SoAOrderbook>(BASE_SEED, samples_per_point);
-    print_results(&soa, cpu_ghz);
+    print_results(&soa, tsc_ghz);
 
     println!("\n--- Hybrid (Hot/Cold) ---");
     let hybrid = run_buildup_benchmark::<HybridOrderbook>(BASE_SEED, samples_per_point);
-    print_results(&hybrid, cpu_ghz);
+    print_results(&hybrid, tsc_ghz);
 
     println!("\n--- Tree-Based ---");
     let tree = run_buildup_benchmark::<TreeOrderbook>(BASE_SEED, samples_per_point);
-    print_results(&tree, cpu_ghz);
+    print_results(&tree, tsc_ghz);
 
     println!("\n--- Comparison: p50 add latency by starting depth ---");
     print_comparison(&fixed, &soa, &hybrid, &tree);
@@ -151,7 +151,7 @@ fn main() {
     println!("\n--- Depth Effect: p50 change from early to mature book ---");
     print_depth_analysis(&fixed, &soa, &hybrid, &tree);
 
-    export_csv(cpu_ghz, &fixed, &soa, &hybrid, &tree);
+    export_csv(tsc_ghz, &fixed, &soa, &hybrid, &tree);
 }
 
 fn samples_per_point() -> usize {
@@ -209,9 +209,11 @@ fn run_buildup_benchmark<O: OrderbookTrait>(seed: u64, samples: usize) -> Buildu
     for book_index in 0..books_required {
         let samples_already_collected = trackers[0].len();
         let measured_this_book = (samples - samples_already_collected).min(MEASURED_ADDS_PER_BOOK);
-        assert!(trackers
-            .iter()
-            .all(|tracker| tracker.len() == samples_already_collected));
+        assert!(
+            trackers
+                .iter()
+                .all(|tracker| tracker.len() == samples_already_collected)
+        );
 
         let maximum_orders = REFERENCE_BOOK_ORDERS + measured_this_book;
         let stream_seed = seed.wrapping_add(book_index as u64);
@@ -325,7 +327,7 @@ fn assert_book_matches_stream<O: OrderbookTrait>(book: &O, stream: &[OrderSpec])
     assert_eq!(book.best_ask(), expected_best_ask);
 }
 
-fn print_results(results: &BuildupResults, cpu_ghz: f64) {
+fn print_results(results: &BuildupResults, tsc_ghz: f64) {
     println!("add_order() latency by starting depth window:");
     println!(
         "{:<11} | {:>10} | {:>10} | {:>10} | {:>10} | {:>10}",
@@ -352,7 +354,7 @@ fn print_results(results: &BuildupResults, cpu_ghz: f64) {
         println!(
             "  {:>3}% start: {:>8.1} ns",
             percentage,
-            cycles_to_ns(p50, cpu_ghz)
+            tsc_ticks_to_ns(p50, tsc_ghz)
         );
     }
 }
@@ -441,7 +443,7 @@ fn percentage_change(early: u64, mature: u64) -> f64 {
 }
 
 fn export_csv(
-    cpu_ghz: f64,
+    tsc_ghz: f64,
     fixed: &BuildupResults,
     soa: &BuildupResults,
     hybrid: &BuildupResults,
@@ -462,7 +464,7 @@ fn export_csv(
                         scenario: "scenario_buildup",
                         implementation,
                         operation,
-                        cpu_ghz,
+                        tsc_ghz,
                         percentiles: &results.at_checkpoint[index],
                     }) {
                         eprintln!("Warning: could not append buildup CSV row: {error}");

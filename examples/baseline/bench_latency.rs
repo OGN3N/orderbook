@@ -13,7 +13,7 @@ use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
-use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
@@ -26,10 +26,10 @@ const ORDER_QUANTITY: u32 = 100;
 fn main() {
     println!("=== Orderbook Latency Benchmark ===\n");
 
-    // Get CPU frequency
-    println!("Detecting CPU frequency...");
-    let cpu_ghz = get_cpu_frequency();
-    println!("CPU frequency: {:.3} GHz", cpu_ghz);
+    // Calibrate the time-stamp-counter frequency.
+    println!("Calibrating TSC frequency...");
+    let tsc_ghz = get_tsc_frequency();
+    println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
 
     // Show CPU model if available (Linux only)
     #[cfg(target_os = "linux")]
@@ -51,19 +51,19 @@ fn main() {
     // Benchmark each implementation
     println!("--- Fixed-Tick Array Orderbook ---");
     let fixed_stats = benchmark_orderbook::<FixedTickOrderbook>();
-    print_results(&fixed_stats, cpu_ghz);
+    print_results(&fixed_stats, tsc_ghz);
 
     println!("\n--- Structure-of-Arrays (SoA) Orderbook ---");
     let soa_stats = benchmark_orderbook::<SoAOrderbook>();
-    print_results(&soa_stats, cpu_ghz);
+    print_results(&soa_stats, tsc_ghz);
 
     println!("\n--- Hybrid (Hot/Cold) Orderbook ---");
     let hybrid_stats = benchmark_orderbook::<HybridOrderbook>();
-    print_results(&hybrid_stats, cpu_ghz);
+    print_results(&hybrid_stats, tsc_ghz);
 
     println!("\n--- Tree-Based Orderbook ---");
     let tree_stats = benchmark_orderbook::<TreeOrderbook>();
-    print_results(&tree_stats, cpu_ghz);
+    print_results(&tree_stats, tsc_ghz);
 
     println!("\n=== Comparison Table ===\n");
     compare_all_implementations(
@@ -71,7 +71,7 @@ fn main() {
         &soa_stats,
         &hybrid_stats,
         &tree_stats,
-        cpu_ghz,
+        tsc_ghz,
     );
 
     // Export results to CSV
@@ -93,7 +93,7 @@ fn main() {
                         scenario: "bench_latency",
                         implementation: impl_name,
                         operation: op,
-                        cpu_ghz,
+                        tsc_ghz,
                         percentiles: p,
                     });
                 }
@@ -192,57 +192,57 @@ fn benchmark_orderbook<O: OrderbookTrait>() -> BenchmarkResults {
     }
 }
 
-fn print_results(results: &BenchmarkResults, cpu_ghz: f64) {
+fn print_results(results: &BenchmarkResults, tsc_ghz: f64) {
     println!("add_order():");
-    print_percentiles(&results.add_order, cpu_ghz);
+    print_percentiles(&results.add_order, tsc_ghz);
 
     println!("\ncancel_order():");
-    print_percentiles(&results.cancel_order, cpu_ghz);
+    print_percentiles(&results.cancel_order, tsc_ghz);
 
     println!("\nexecute_market_order():");
-    print_percentiles(&results.market_order, cpu_ghz);
+    print_percentiles(&results.market_order, tsc_ghz);
 }
 
-fn print_percentiles(p: &Percentiles, cpu_ghz: f64) {
+fn print_percentiles(p: &Percentiles, tsc_ghz: f64) {
     println!(
         "  Min:    {:>8} cycles  ({:>7.1} ns)",
         p.min,
-        cycles_to_ns(p.min, cpu_ghz)
+        tsc_ticks_to_ns(p.min, tsc_ghz)
     );
     println!(
         "  p50:    {:>8} cycles  ({:>7.1} ns) (median)",
         p.p50,
-        cycles_to_ns(p.p50, cpu_ghz)
+        tsc_ticks_to_ns(p.p50, tsc_ghz)
     );
     println!(
         "  Mean:   {:>8.2} cycles  ({:>7.1} ns)",
         p.mean,
-        p.mean / cpu_ghz
+        p.mean / tsc_ghz
     );
     println!(
         "  p95:    {:>8} cycles  ({:>7.1} ns)",
         p.p95,
-        cycles_to_ns(p.p95, cpu_ghz)
+        tsc_ticks_to_ns(p.p95, tsc_ghz)
     );
     println!(
         "  p99:    {:>8} cycles  ({:>7.1} ns)",
         p.p99,
-        cycles_to_ns(p.p99, cpu_ghz)
+        tsc_ticks_to_ns(p.p99, tsc_ghz)
     );
     println!(
         "  p99.9:  {:>8} cycles  ({:>7.1} ns)",
         p.p999,
-        cycles_to_ns(p.p999, cpu_ghz)
+        tsc_ticks_to_ns(p.p999, tsc_ghz)
     );
     println!(
         "  p99.99: {:>8} cycles  ({:>7.1} ns)",
         p.p9999,
-        cycles_to_ns(p.p9999, cpu_ghz)
+        tsc_ticks_to_ns(p.p9999, tsc_ghz)
     );
     println!(
         "  Max:    {:>8} cycles  ({:>7.1} ns)",
         p.max,
-        cycles_to_ns(p.max, cpu_ghz)
+        tsc_ticks_to_ns(p.max, tsc_ghz)
     );
 }
 
@@ -251,7 +251,7 @@ fn compare_all_implementations(
     soa: &BenchmarkResults,
     hybrid: &BenchmarkResults,
     tree: &BenchmarkResults,
-    _cpu_ghz: f64,
+    _tsc_ghz: f64,
 ) {
     println!("Median (p50) Latencies:");
     println!("{:-<80}", "");

@@ -6,19 +6,19 @@
 //! Run with: cargo run --release --example scenario_steady_state
 
 use orderbook::analysis::{CsvExporter, ResultRow};
+use orderbook::orderbook::OrderbookTrait;
+use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook;
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
-use orderbook::orderbook::OrderbookTrait;
-use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 use orderbook::perf::latency::{LatencyTracker, Percentiles};
-use orderbook::perf::{cycles_to_ns, get_cpu_frequency};
+use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use orderbook::types::order::{IdCounter, Order, OrderId, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
+use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 use std::collections::{HashMap, VecDeque};
 
 const MIN_PRICE: u32 = 1;
@@ -125,8 +125,8 @@ const ROUND_OPERATIONS: [Operation; OPERATIONS_PER_ROUND] = [
 fn main() {
     println!("=== Scenario 4.2d: Stable-Depth Mixed Operations ===\n");
 
-    let cpu_ghz = get_cpu_frequency();
-    println!("CPU frequency: {:.3} GHz", cpu_ghz);
+    let tsc_ghz = get_tsc_frequency();
+    println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
     print_cpu_model();
 
     let config = BenchmarkConfig::from_environment();
@@ -134,19 +134,19 @@ fn main() {
 
     println!("--- Fixed-Tick Array ---");
     let fixed = run_steady_state::<FixedTickOrderbook>(BASE_SEED, &config);
-    print_results(&fixed, cpu_ghz);
+    print_results(&fixed, tsc_ghz);
 
     println!("\n--- Structure-of-Arrays (SoA) ---");
     let soa = run_steady_state::<SoAOrderbook>(BASE_SEED, &config);
-    print_results(&soa, cpu_ghz);
+    print_results(&soa, tsc_ghz);
 
     println!("\n--- Hybrid (Hot/Cold) ---");
     let hybrid = run_steady_state::<HybridOrderbook>(BASE_SEED, &config);
-    print_results(&hybrid, cpu_ghz);
+    print_results(&hybrid, tsc_ghz);
 
     println!("\n--- Tree-Based ---");
     let tree = run_steady_state::<TreeOrderbook>(BASE_SEED, &config);
-    print_results(&tree, cpu_ghz);
+    print_results(&tree, tsc_ghz);
 
     println!("\n--- Comparison (p50 latency in cycles) ---");
     print_comparison(&fixed, &soa, &hybrid, &tree);
@@ -155,9 +155,9 @@ fn main() {
     print_tail_analysis(&fixed, &soa, &hybrid, &tree);
 
     println!("\n--- Workload-Weighted Mean Latency ---");
-    print_weighted_means(&fixed, &soa, &hybrid, &tree, cpu_ghz);
+    print_weighted_means(&fixed, &soa, &hybrid, &tree, tsc_ghz);
 
-    export_csv(&config, cpu_ghz, &fixed, &soa, &hybrid, &tree);
+    export_csv(&config, tsc_ghz, &fixed, &soa, &hybrid, &tree);
 }
 
 #[derive(Clone, Copy)]
@@ -726,15 +726,15 @@ fn assert_book_matches_model<O: OrderbookTrait>(book: &O, model: &BookModel) {
     }
 }
 
-fn print_results(results: &SteadyStateResults, cpu_ghz: f64) {
-    print_operation("add_order()", &results.add_order, cpu_ghz);
+fn print_results(results: &SteadyStateResults, tsc_ghz: f64) {
+    print_operation("add_order()", &results.add_order, tsc_ghz);
     println!();
-    print_operation("cancel_order()", &results.cancel_order, cpu_ghz);
+    print_operation("cancel_order()", &results.cancel_order, tsc_ghz);
     println!();
-    print_operation("execute_market_order()", &results.market_order, cpu_ghz);
+    print_operation("execute_market_order()", &results.market_order, tsc_ghz);
 }
 
-fn print_operation(name: &str, p: &Percentiles, cpu_ghz: f64) {
+fn print_operation(name: &str, p: &Percentiles, tsc_ghz: f64) {
     println!("{name}:");
     for (label, cycles) in [
         ("p50", p.p50),
@@ -747,7 +747,7 @@ fn print_operation(name: &str, p: &Percentiles, cpu_ghz: f64) {
             "  {:<6} {:>8} cycles  ({:>8.1} ns)",
             format!("{label}:"),
             cycles,
-            cycles_to_ns(cycles, cpu_ghz)
+            tsc_ticks_to_ns(cycles, tsc_ghz)
         );
     }
 }
@@ -854,7 +854,7 @@ fn print_weighted_means(
     soa: &SteadyStateResults,
     hybrid: &SteadyStateResults,
     tree: &SteadyStateResults,
-    cpu_ghz: f64,
+    tsc_ghz: f64,
 ) {
     for (name, results) in [
         ("Fixed-Tick", fixed),
@@ -867,7 +867,7 @@ fn print_weighted_means(
             "  {:<12}: {:>9.1} cycles / {:>8.1} ns",
             name,
             mean_cycles,
-            mean_cycles / cpu_ghz
+            mean_cycles / tsc_ghz
         );
     }
     println!(
@@ -884,7 +884,7 @@ fn workload_weighted_mean(results: &SteadyStateResults) -> f64 {
 
 fn export_csv(
     config: &BenchmarkConfig,
-    cpu_ghz: f64,
+    tsc_ghz: f64,
     fixed: &SteadyStateResults,
     soa: &SteadyStateResults,
     hybrid: &SteadyStateResults,
@@ -914,7 +914,7 @@ fn export_csv(
                         scenario: "scenario_steady_state",
                         implementation,
                         operation,
-                        cpu_ghz,
+                        tsc_ghz,
                         percentiles,
                     }) {
                         eprintln!("Warning: could not append steady-state CSV row: {error}");

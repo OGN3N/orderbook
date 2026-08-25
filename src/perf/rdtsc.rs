@@ -1,6 +1,7 @@
 /// Read the CPU Time-Stamp Counter
 ///
-/// Returns the number of CPU cycles since processor reset.
+/// Returns the current 64-bit TSC value. On modern invariant-TSC processors,
+/// these are constant-rate reference ticks rather than current core-clock cycles.
 /// This is the fastest way to measure time on x86/x64.
 #[inline(always)]
 pub fn rdtsc() -> u64 {
