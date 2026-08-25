@@ -14,7 +14,7 @@ The independent variables are the order-book implementation and the workload sce
 
 All implementations receive the same deterministic event sequences. The pseudo-random generator is `StdRng`, initialized from a fixed seed of 42. Subsequent batches use the batch number as a deterministic seed offset. This makes a workload repeatable and ensures that implementation comparisons within one benchmark run use identical prices and cancellation orders.
 
-Unless a scenario specifies otherwise, prices are represented as integer ticks in the valid half-open interval \([1,10000)\), and every order has a quantity of 100 units. Bid and ask orders alternate during the insertion phase, producing equal side counts in every complete batch. Fixing quantity and side balance reduces unrelated variation and isolates the effects of the price distribution and data structure.
+Unless a scenario specifies otherwise, prices are represented as integer ticks in the valid half-open interval $[1,10000)$, and every order has a quantity of 100 units. Bid and ask orders alternate during the insertion phase, producing equal side counts in every complete batch. Fixing quantity and side balance reduces unrelated variation and isolates the effects of the price distribution and data structure.
 
 ### 5.3 Benchmark phases
 
@@ -60,13 +60,13 @@ At the start boundary, the first `LFENCE` prevents earlier instructions and load
 
 #### 5.4.3 Measurement boundary in the benchmark harness
 
-The `LatencyTracker::record` method reads the starting timestamp immediately before invoking the supplied operation and reads the ending timestamp immediately after that operation returns. For sample \(j\), the recorded latency is therefore
+The `LatencyTracker::record` method reads the starting timestamp immediately before invoking the supplied operation and reads the ending timestamp immediately after that operation returns. For sample $j$, the recorded latency is therefore
 
-\[
+$$
 L_j = T_{j,\mathrm{end}} - T_{j,\mathrm{start}}.
-\]
+$$
 
-Appending \(L_j\) to the sample vector occurs after the end timestamp and is not included in the measured interval. Scenario setup, such as creating a new order book and inserting the 200 asks used to initialize the market-order workload, is also outside the timed interval. Work performed inside an order-book method—including validation, data-structure traversal, allocation, matching, and creation of fill records—is included. In the present market-order benchmark, the returned fill vector is discarded inside the measured closure, so its destruction is included as well.
+Appending $L_j$ to the sample vector occurs after the end timestamp and is not included in the measured interval. Scenario setup, such as creating a new order book and inserting the 200 asks used to initialize the market-order workload, is also outside the timed interval. Work performed inside an order-book method—including validation, data-structure traversal, allocation, matching, and creation of fill records—is included. In the present market-order benchmark, the returned fill vector is discarded inside the measured closure, so its destruction is included as well.
 
 The timing instructions and fences have their own non-zero cost. Because the implementation does not measure and subtract an empty timing interval, every observation includes this fixed measurement overhead. Applying the same harness to every implementation makes relative comparisons meaningful, but the shortest absolute latency values are slightly inflated by the timer itself.
 
@@ -74,32 +74,32 @@ The timing instructions and fences have their own non-zero cost. Because the imp
 
 The benchmark records TSC ticks directly and calibrates their rate against Rust's monotonic `Instant` clock. For each calibration sample, it reads both clocks, waits for a 50 ms interval, reads them again, and calculates
 
-\[
+$$
 f_{\mathrm{TSC},k}
 =
 \frac{T_{k,\mathrm{end}}-T_{k,\mathrm{start}}}
 {W_{k,\mathrm{end}}-W_{k,\mathrm{start}}},
-\]
+$$
 
 where the numerator is measured in TSC ticks and the denominator is measured in nanoseconds. The result is expressed in ticks per nanosecond, which is numerically equivalent to gigahertz. Five calibration samples are collected and their median is used as the TSC frequency for the benchmark run:
 
-\[
+$$
 f_{\mathrm{TSC,GHz}}
 =
 \operatorname{median}\left(f_{\mathrm{TSC},1},\ldots,f_{\mathrm{TSC},5}\right).
-\]
+$$
 
 Using the median reduces the influence of a scheduling interruption or timing disturbance during one calibration interval. Once the TSC frequency has been established, a measured latency is converted using
 
-\[
+$$
 L_{\mathrm{ns}} = \frac{L_{\mathrm{TSC}}}{f_{\mathrm{TSC,GHz}}}.
-\]
+$$
 
 For example, if the calibrated rate is 3.000 TSC ticks per nanosecond, a measurement of 210 ticks corresponds to
 
-\[
+$$
 L_{\mathrm{ns}} = \frac{210}{3.000} = 70.0\ \mathrm{ns}.
-\]
+$$
 
 This approach measures the rate of the same counter used to time the operations. It does not use the instantaneous `cpu MHz` value reported by `/proc/cpuinfo`, so dynamic changes in the processor core's operating frequency do not distort the conversion. The calibrated TSC frequency is stored in the `tsc_ghz` column of every result CSV. TSC ticks remain the directly measured unit, while nanoseconds are derived from the calibrated relationship between the TSC and the monotonic clock.
 
@@ -107,13 +107,13 @@ On non-x86-64 systems, the implementation does not use `RDTSC`; it falls back to
 
 #### 5.4.5 Statistical aggregation
 
-One latency value is retained for every measured operation. After all observations have been collected, the sample vector is sorted. For percentile \(q\), the implementation selects the observation at index
+One latency value is retained for every measured operation. After all observations have been collected, the sample vector is sorted. For percentile $q$, the implementation selects the observation at index
 
-\[
+$$
 i_q = \left\lfloor q(n-1) \right\rfloor,
-\]
+$$
 
-where \(n\) is the number of samples. This procedure is used for the p50, p95, p99, p99.9, and p99.99 values. The minimum, maximum, and arithmetic mean are also calculated. One CSV row is written for each combination of scenario, implementation, and operation, containing the directly measured TSC statistics, the calibrated TSC frequency, and the corresponding derived nanosecond values.
+where $n$ is the number of samples. This procedure is used for the p50, p95, p99, p99.9, and p99.99 values. The minimum, maximum, and arithmetic mean are also calculated. One CSV row is written for each combination of scenario, implementation, and operation, containing the directly measured TSC statistics, the calibrated TSC frequency, and the corresponding derived nanosecond values.
 
 Percentiles are emphasized because matching-engine latency distributions are typically asymmetric and can contain rare but very large observations caused by allocation, cache misses, interrupts, pre-emption, or operating-system activity. The median describes the typical operation, while p99 and the higher percentiles describe tail latency. A maximum is reported for completeness but should not be interpreted as a stable performance guarantee.
 
@@ -170,13 +170,13 @@ Price distribution determines both the logical state of an order book and the ph
 
 #### 6.1.1 Definition and purpose
 
-In the uniform scenario, every valid integer price tick has the same probability of being selected. If \(P\) denotes the generated price, then
+In the uniform scenario, every valid integer price tick has the same probability of being selected. If $P$ denotes the generated price, then
 
-\[
+$$
 P \sim \operatorname{DiscreteUniform}\{1,2,\ldots,9999\},
 \qquad
 \Pr(P=p)=\frac{1}{9999}.
-\]
+$$
 
 The expected price is 5,000 ticks. The distribution is intentionally spread across the complete supported price range rather than concentrated around a mid-price. It should therefore be interpreted as a synthetic low-locality stress workload, not as a realistic model of ordinary order placement. Its purpose is to expose how the four data structures behave when successive events frequently refer to distant price levels.
 
