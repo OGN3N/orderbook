@@ -38,6 +38,7 @@ SCENARIO_TITLES = {
     "uniform": "Uniform workload",
     "clustered": "Clustered workload",
     "zipfian": "Zipfian workload",
+    "bursty": "Bursty workload",
 }
 
 
@@ -522,6 +523,102 @@ def draw_zipfian_model(path: Path) -> None:
     svg.write(path)
 
 
+def draw_bursty_model(path: Path) -> None:
+    width, height = 1200, 780
+    svg = Svg(width, height)
+    svg.text(width / 2, 40, "Bursty price-distribution workload", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        66,
+        "10 × [500-order local burst → 50-order wide quiet phase]; no artificial time delays",
+        size=16,
+        fill="#374151",
+    )
+
+    left, right = 105, 1130
+    plot_width = right - left
+    burst_color = "#F97316"
+    quiet_color = "#60A5FA"
+
+    # The upper panel preserves the order in which the insertion workload is
+    # generated. Segment widths are proportional to the number of operations.
+    timeline_top, timeline_bottom = 125, 205
+    svg.text(left, 106, "Insertion sequence in one 5,500-order book", size=16, anchor="start", weight="bold")
+    cycle_width = plot_width / 10
+    burst_width = cycle_width * 500 / 550
+    quiet_width = cycle_width * 50 / 550
+    for cycle in range(10):
+        x = left + cycle * cycle_width
+        svg.rect(x, timeline_top, burst_width, timeline_bottom - timeline_top, fill=burst_color)
+        svg.rect(
+            x + burst_width,
+            timeline_top,
+            quiet_width,
+            timeline_bottom - timeline_top,
+            fill=quiet_color,
+        )
+        svg.line(x, timeline_top, x, timeline_bottom, stroke="#FFFFFF", stroke_width=1)
+        svg.text(x + cycle_width / 2, timeline_bottom + 23, str(cycle + 1), size=12, fill="#374151")
+    svg.line(right, timeline_top, right, timeline_bottom, stroke="#FFFFFF", stroke_width=1)
+    svg.text((left + right) / 2, 252, "Burst/quiet cycle", size=14)
+    svg.rect(340, 268, 18, 18, fill=burst_color, rx=2)
+    svg.text(368, 282, "Burst: 500 orders over 20 ticks", size=13, anchor="start")
+    svg.rect(675, 268, 18, 18, fill=quiet_color, rx=2)
+    svg.text(703, 282, "Quiet: 50 orders over 2,000 ticks", size=13, anchor="start")
+
+    # The lower panel aggregates the ten temporal cycles into equal 20-tick
+    # price bins. Every bin receives five expected quiet orders; burst windows
+    # add their concentrated mass while their centers drift from 5,000 to 5,090.
+    dist_top, dist_bottom = 345, 650
+    dist_height = dist_bottom - dist_top
+    svg.text(left, 326, "Expected aggregate price distribution", size=16, anchor="start", weight="bold")
+    y_max = 1_100.0
+    for value in (0, 250, 500, 750, 1_000):
+        y = dist_bottom - dist_height * value / y_max
+        svg.line(left, y, right, y, stroke="#D1D5DB", dash="4 4")
+        svg.text(left - 12, y + 5, f"{value:,}", size=13, anchor="end", fill="#4B5563")
+    svg.line(left, dist_top, left, dist_bottom, stroke="#374151", stroke_width=1.5)
+    svg.line(left, dist_bottom, right, dist_bottom, stroke="#374151", stroke_width=1.5)
+
+    bin_min = 4_000
+    bin_width_ticks = 20
+    bin_count = 100
+    bar_width = plot_width / bin_count
+    expected_counts = [5.0 for _ in range(bin_count)]
+    for cycle in range(10):
+        burst_min = 4_990 + cycle * 10
+        burst_max = burst_min + 19
+        for price in range(burst_min, burst_max + 1):
+            bin_index = (price - bin_min) // bin_width_ticks
+            expected_counts[bin_index] += 25.0
+
+    for index, expected_orders in enumerate(expected_counts):
+        bar_height = max(1.3, dist_height * expected_orders / y_max)
+        svg.rect(
+            left + index * bar_width + 0.8,
+            dist_bottom - bar_height,
+            bar_width - 1.6,
+            bar_height,
+            fill=burst_color if expected_orders > 5.0 else quiet_color,
+        )
+
+    for price, label in ((4_000, "4,000"), (4_500, "4,500"), (5_000, "5,000"), (5_500, "5,500"), (5_999, "5,999")):
+        x = left + (price - 4_000) / (5_999 - 4_000) * plot_width
+        svg.line(x, dist_bottom, x, dist_bottom + 6, stroke="#374151")
+        svg.text(x, dist_bottom + 27, label, size=13, fill="#374151")
+
+    svg.text((left + right) / 2, 708, "Price tick", size=15)
+    svg.text(30, (dist_top + dist_bottom) / 2, "Expected orders per 20-tick bin", size=15, rotate=-90)
+    svg.text(
+        width / 2,
+        758,
+        "Orange includes burst and quiet orders; blue is the five-order quiet-phase baseline per bin.",
+        size=13,
+        fill="#6B7280",
+    )
+    svg.write(path)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -562,8 +659,10 @@ def main() -> None:
         draw_uniform_model(args.output_dir / names[2])
     elif args.scenario == "clustered":
         draw_clustered_model(args.output_dir / names[2])
-    else:
+    elif args.scenario == "zipfian":
         draw_zipfian_model(args.output_dir / names[2])
+    else:
+        draw_bursty_model(args.output_dir / names[2])
 
     for name in names:
         print(args.output_dir / name)
