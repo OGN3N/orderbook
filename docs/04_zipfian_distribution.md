@@ -38,11 +38,11 @@ For example, ranks 1, 2, 3, 4, and 5 map to prices 5,000, 5,001, 4,999, 5,002, a
 
 This scenario differs from the clustered mixture in two important ways. It has no full-range background component, and the probabilities within its 200-level support are highly unequal. Rank 1 is expected to receive approximately 1,701 of the 10,000 orders in a full insertion book, while rank 200 is expected to receive only about 8.5. The scenario is a controlled synthetic model of skewed activity and temporal locality, not a calibrated statistical model of a particular market.
 
-Figure 6.7 shows the theoretical rank-probability relationship on logarithmic axes. A Zipf distribution with exponent 1 appears as a straight descending line in this representation. The plot is a model of the generator rather than an empirical histogram because the result CSV contains aggregate latency percentiles and does not retain the generated prices.
+Figure 6.7 shows the expected number of orders at every generated price level in a 10,000-order book. Each of the 200 bars represents one price tick from 4,901 through 5,100, and its height is $10000\Pr(P=p)$. The dominant bar at tick 5,000 corresponds to rank 1. Bar heights then decrease with distance from the reference price, with the small alternating difference caused by assigning even ranks above 5,000 and odd ranks below it. The plot is a model of the generator rather than an empirical histogram because the result CSV contains aggregate latency percentiles and does not retain the generated prices.
 
 ![Theoretical Zipfian price-distribution workload](../figures/zipfian_workload_model.svg)
 
-*Figure 6.7: The Zipfian rank distribution used by the benchmark. Popularity is proportional to the reciprocal of rank, and ranks alternate around the reference price of 5,000 ticks.*
+*Figure 6.7: Theoretical order distribution across the 200 Zipfian price levels. Heights show the expected number of orders at each price in a 10,000-order insertion book.*
 
 ### 6.3.2 Scenario procedure
 

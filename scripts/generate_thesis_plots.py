@@ -457,7 +457,7 @@ def draw_zipfian_model(path: Path) -> None:
     svg.text(
         width / 2,
         66,
-        "200 ranks with exponent s = 1; probability is proportional to 1/rank",
+        "Expected distribution in a 10,000-order book; 200 price levels and exponent s = 1",
         size=16,
         fill="#374151",
     )
@@ -466,83 +466,56 @@ def draw_zipfian_model(path: Path) -> None:
     plot_width = right - left
     plot_height = bottom - top
     harmonic_200 = sum(1.0 / rank for rank in range(1, 201))
-    x_min, x_max = 1.0, 200.0
-    y_min, y_max = 0.05, 20.0
+    min_price, max_price = 4_901, 5_100
+    y_max = 1_800.0
 
-    def x_for(rank: float) -> float:
-        position = math.log10(rank / x_min) / math.log10(x_max / x_min)
-        return left + position * plot_width
-
-    def y_for(probability_percent: float) -> float:
-        position = math.log10(probability_percent / y_min) / math.log10(y_max / y_min)
-        return bottom - position * plot_height
-
-    y_ticks = (0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0)
-    for value in y_ticks:
-        y = y_for(value)
+    for value in range(0, 1_801, 300):
+        y = bottom - plot_height * value / y_max
         svg.line(left, y, right, y, stroke="#D1D5DB", dash="4 4")
-        svg.text(left - 12, y + 5, f"{value:g}%", size=13, anchor="end", fill="#4B5563")
-
-    x_ticks = (1, 2, 5, 10, 20, 50, 100, 200)
-    for rank in x_ticks:
-        x = x_for(rank)
-        svg.line(x, top, x, bottom, stroke="#E5E7EB", dash="4 4")
-        svg.line(x, bottom, x, bottom + 6, stroke="#374151")
-        svg.text(x, bottom + 28, str(rank), size=13, fill="#374151")
+        svg.text(left - 12, y + 5, f"{value:,}", size=13, anchor="end", fill="#4B5563")
 
     svg.line(left, top, left, bottom, stroke="#374151", stroke_width=1.5)
     svg.line(left, bottom, right, bottom, stroke="#374151", stroke_width=1.5)
 
-    points = []
+    expected_by_price: dict[int, tuple[int, float]] = {}
     for rank in range(1, 201):
-        probability_percent = 100.0 / (rank * harmonic_200)
-        points.append((x_for(rank), y_for(probability_percent)))
-    svg.polyline(points, stroke="#7C3AED", stroke_width=3.5)
+        if rank == 1:
+            price = 5_000
+        elif rank % 2 == 0:
+            price = 5_000 + rank // 2
+        else:
+            price = 5_000 - rank // 2
+        expected_orders = 10_000.0 / (rank * harmonic_200)
+        expected_by_price[price] = (rank, expected_orders)
 
-    callouts = (
-        (1, "Rank 1: 17.0%", 130, 88, 140, 130, 116),
-        (2, "Rank 2: 8.51%", 270, 132, 145, 270, 148),
-        (10, "Rank 10: 1.70%", 580, 216, 150, 580, 232),
-        (200, "Rank 200: 0.085%", 925, 365, 180, 1105, 381),
-    )
-    for rank, label, box_x, box_y, box_width, leader_x, leader_y in callouts:
-        probability_percent = 100.0 / (rank * harmonic_200)
-        x, y = x_for(rank), y_for(probability_percent)
-        svg.line(x, y, leader_x, leader_y, stroke="#7C3AED", stroke_width=1.5)
+    bar_width = plot_width / len(expected_by_price)
+    for price in range(min_price, max_price + 1):
+        rank, expected_orders = expected_by_price[price]
+        bar_height = plot_height * expected_orders / y_max
+        x = left + (price - min_price) * bar_width
         svg.rect(
-            box_x,
-            box_y,
-            box_width,
-            32,
-            fill="#FFFFFF",
-            stroke="#A78BFA",
-            stroke_width=1.5,
-            opacity=0.97,
-            rx=6,
-        )
-        svg.circle(x, y, 5, fill="#7C3AED")
-        svg.text(
-            box_x + box_width / 2,
-            box_y + 21,
-            label,
-            size=13,
-            weight="bold",
-            fill="#5B21B6",
+            x + 0.35,
+            bottom - bar_height,
+            max(1.0, bar_width - 0.7),
+            bar_height,
+            fill="#5B21B6" if rank == 1 else "#A78BFA",
         )
 
-    svg.text((left + right) / 2, 510, "Popularity rank (log scale)", size=15)
-    svg.text(30, (top + bottom) / 2, "Probability of rank (log scale)", size=15, rotate=-90)
-    svg.text(
-        width / 2,
-        548,
-        "Price mapping: 1→5,000; 2→5,001; 3→4,999; higher ranks alternate above and below 5,000.",
-        size=14,
-        fill="#374151",
-    )
+    for price, label in ((4_901, "4,901"), (4_950, "4,950"), (5_000, "5,000"), (5_050, "5,050"), (5_100, "5,100")):
+        x = left + ((price - min_price) + 0.5) * bar_width
+        svg.line(x, bottom, x, bottom + 6, stroke="#374151")
+        svg.text(x, bottom + 28, label, size=13, fill="#374151")
+
+    svg.text((left + right) / 2, 505, "Price tick", size=15)
+    svg.text(30, (top + bottom) / 2, "Expected orders per 10,000", size=15, rotate=-90)
+    svg.rect(370, 530, 18, 18, fill="#5B21B6", rx=2)
+    svg.text(398, 544, "Rank 1: price 5,000 (≈1,701 orders)", size=13, anchor="start")
+    svg.rect(690, 530, 18, 18, fill="#A78BFA", rx=2)
+    svg.text(718, 544, "Ranks 2–200", size=13, anchor="start")
     svg.text(
         width / 2,
         585,
-        "The result CSV does not contain raw price draws; this curve is the theoretical workload model.",
+        "The result CSV does not contain raw price draws; these bars show the theoretical expected counts.",
         size=13,
         fill="#6B7280",
     )
