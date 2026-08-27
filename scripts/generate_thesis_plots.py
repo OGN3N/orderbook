@@ -37,6 +37,7 @@ FONT = "Arial, Helvetica, sans-serif"
 SCENARIO_TITLES = {
     "uniform": "Uniform workload",
     "clustered": "Clustered workload",
+    "zipfian": "Zipfian workload",
 }
 
 
@@ -449,6 +450,91 @@ def draw_clustered_model(path: Path) -> None:
     svg.write(path)
 
 
+def draw_zipfian_model(path: Path) -> None:
+    width, height = 1200, 610
+    svg = Svg(width, height)
+    svg.text(width / 2, 40, "Zipfian price-distribution workload", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        66,
+        "200 ranks with exponent s = 1; probability is proportional to 1/rank",
+        size=16,
+        fill="#374151",
+    )
+
+    left, right, top, bottom = 105, 1130, 125, 450
+    plot_width = right - left
+    plot_height = bottom - top
+    harmonic_200 = sum(1.0 / rank for rank in range(1, 201))
+    x_min, x_max = 1.0, 200.0
+    y_min, y_max = 0.05, 20.0
+
+    def x_for(rank: float) -> float:
+        position = math.log10(rank / x_min) / math.log10(x_max / x_min)
+        return left + position * plot_width
+
+    def y_for(probability_percent: float) -> float:
+        position = math.log10(probability_percent / y_min) / math.log10(y_max / y_min)
+        return bottom - position * plot_height
+
+    y_ticks = (0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0)
+    for value in y_ticks:
+        y = y_for(value)
+        svg.line(left, y, right, y, stroke="#D1D5DB", dash="4 4")
+        svg.text(left - 12, y + 5, f"{value:g}%", size=13, anchor="end", fill="#4B5563")
+
+    x_ticks = (1, 2, 5, 10, 20, 50, 100, 200)
+    for rank in x_ticks:
+        x = x_for(rank)
+        svg.line(x, top, x, bottom, stroke="#E5E7EB", dash="4 4")
+        svg.line(x, bottom, x, bottom + 6, stroke="#374151")
+        svg.text(x, bottom + 28, str(rank), size=13, fill="#374151")
+
+    svg.line(left, top, left, bottom, stroke="#374151", stroke_width=1.5)
+    svg.line(left, bottom, right, bottom, stroke="#374151", stroke_width=1.5)
+
+    points = []
+    for rank in range(1, 201):
+        probability_percent = 100.0 / (rank * harmonic_200)
+        points.append((x_for(rank), y_for(probability_percent)))
+    svg.polyline(points, stroke="#7C3AED", stroke_width=3.5)
+
+    for rank in (1, 2, 10, 200):
+        probability_percent = 100.0 / (rank * harmonic_200)
+        x, y = x_for(rank), y_for(probability_percent)
+        svg.circle(x, y, 5, fill="#7C3AED")
+        anchor = "start" if rank in (1, 2) else "end"
+        dx = 12 if anchor == "start" else -12
+        dy = 19 if rank == 1 else -10
+        svg.text(
+            x + dx,
+            y + dy,
+            f"rank {rank}: {probability_percent:.3g}%",
+            size=13,
+            anchor=anchor,
+            weight="bold",
+            fill="#5B21B6",
+        )
+
+    svg.text((left + right) / 2, 510, "Popularity rank (log scale)", size=15)
+    svg.text(30, (top + bottom) / 2, "Probability of rank (log scale)", size=15, rotate=-90)
+    svg.text(
+        width / 2,
+        548,
+        "Price mapping: 1→5,000; 2→5,001; 3→4,999; higher ranks alternate above and below 5,000.",
+        size=14,
+        fill="#374151",
+    )
+    svg.text(
+        width / 2,
+        585,
+        "The result CSV does not contain raw price draws; this curve is the theoretical workload model.",
+        size=13,
+        fill="#6B7280",
+    )
+    svg.write(path)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -487,8 +573,10 @@ def main() -> None:
     draw_percentile_figure(rows, args.output_dir / names[1], scenario_title)
     if args.scenario == "uniform":
         draw_uniform_model(args.output_dir / names[2])
-    else:
+    elif args.scenario == "clustered":
         draw_clustered_model(args.output_dir / names[2])
+    else:
+        draw_zipfian_model(args.output_dir / names[2])
 
     for name in names:
         print(args.output_dir / name)
