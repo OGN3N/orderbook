@@ -499,19 +499,33 @@ def draw_zipfian_model(path: Path) -> None:
         points.append((x_for(rank), y_for(probability_percent)))
     svg.polyline(points, stroke="#7C3AED", stroke_width=3.5)
 
-    for rank in (1, 2, 10, 200):
+    callouts = (
+        (1, "Rank 1: 17.0%", 130, 88, 140, 130, 116),
+        (2, "Rank 2: 8.51%", 270, 132, 145, 270, 148),
+        (10, "Rank 10: 1.70%", 580, 216, 150, 580, 232),
+        (200, "Rank 200: 0.085%", 925, 365, 180, 1105, 381),
+    )
+    for rank, label, box_x, box_y, box_width, leader_x, leader_y in callouts:
         probability_percent = 100.0 / (rank * harmonic_200)
         x, y = x_for(rank), y_for(probability_percent)
+        svg.line(x, y, leader_x, leader_y, stroke="#7C3AED", stroke_width=1.5)
+        svg.rect(
+            box_x,
+            box_y,
+            box_width,
+            32,
+            fill="#FFFFFF",
+            stroke="#A78BFA",
+            stroke_width=1.5,
+            opacity=0.97,
+            rx=6,
+        )
         svg.circle(x, y, 5, fill="#7C3AED")
-        anchor = "start" if rank in (1, 2) else "end"
-        dx = 12 if anchor == "start" else -12
-        dy = 19 if rank == 1 else -10
         svg.text(
-            x + dx,
-            y + dy,
-            f"rank {rank}: {probability_percent:.3g}%",
+            box_x + box_width / 2,
+            box_y + 21,
+            label,
             size=13,
-            anchor=anchor,
             weight="bold",
             fill="#5B21B6",
         )
