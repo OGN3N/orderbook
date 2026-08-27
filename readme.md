@@ -1,328 +1,110 @@
-# Trading Orderbook Performance Testing - Project Structure
+# Memory-Aware Limit Order Books in Rust
 
-```
-trading/
-├── Cargo.toml
-├── Cargo.lock
-├── README.md
-├── PROJECT_STRUCTURE.md (this file)
-│
-├── src/
-│   ├── main.rs                          # CLI entry point for running benchmarks
-│   ├── lib.rs                           # Library root, re-exports public API
-│   │
-│   ├── types/                           # Core domain types
-│   │   ├── mod.rs
-│   │   ├── order.rs                     # Order, OrderId, OrderSide
-│   │   ├── price.rs                     # Price type with tick size
-│   │   ├── quantity.rs                  # Quantity type with lot size
-│   │   ├── timestamp.rs                 # Timestamp handling
-│   │   └── resolution.rs                # Resolution parameters (tick/lot size)
-│   │
-│   ├── orderbook/                       # Orderbook implementations
-│   │   ├── mod.rs                       # Trait definition: Orderbook trait
-│   │   ├── traits.rs                    # Common traits and interfaces
-│   │   │
-│   │   ├── aos/                         # Array-of-Structs implementation
-│   │   │   ├── mod.rs
-│   │   │   └── orderbook.rs
-│   │   │
-│   │   ├── soa/                         # Structure-of-Arrays implementation
-│   │   │   ├── mod.rs
-│   │   │   ├── orderbook.rs
-│   │   │   └── order_storage.rs         # Separate arrays for each field
-│   │   │
-│   │   ├── fixed_tick/                  # Fixed-tick array implementation
-│   │   │   ├── mod.rs
-│   │   │   ├── orderbook.rs
-│   │   │   └── price_level.rs
-│   │   │
-│   │   ├── tree_based/                  # BTreeMap baseline implementation
-│   │   │   ├── mod.rs
-│   │   │   └── orderbook.rs
-│   │   │
-│   │   └── hybrid/                      # Hybrid hot/cold implementation
-│   │       ├── mod.rs
-│   │       ├── orderbook.rs
-│   │       └── tier_manager.rs          # Manages hot/cold tiers
-│   │
-│   ├── matching/                        # Matching engine logic
-│   │   ├── mod.rs
-│   │   ├── engine.rs                    # Core matching engine
-│   │   ├── priority.rs                  # Price-time priority logic
-│   │   └── execution.rs                 # Trade execution and fills
-│   │
-│   ├── workload/                        # Workload generators
-│   │   ├── mod.rs
-│   │   ├── generator.rs                 # Trait for workload generation
-│   │   ├── uniform.rs                   # Uniform random distribution
-│   │   ├── clustered.rs                 # Clustered around mid-price
-│   │   ├── zipfian.rs                   # Zipfian distribution
-│   │   ├── bursty.rs                    # Bursty traffic patterns
-│   │   ├── realistic.rs                 # Real-world order flow simulator
-│   │   └── replay.rs                    # Replay from recorded data
-│   │
-│   ├── benchmark/                       # Benchmarking infrastructure
-│   │   ├── mod.rs
-│   │   ├── harness.rs                   # Custom benchmark harness
-│   │   ├── metrics.rs                   # Metric collection and aggregation
-│   │   ├── config.rs                    # Benchmark configuration
-│   │   └── runner.rs                    # Orchestrates benchmark execution
-│   │
-│   ├── perf/                            # Performance measurement
-│   │   ├── mod.rs
-│   │   ├── counters.rs                  # Hardware performance counters (perf_event)
-│   │   ├── latency.rs                   # Latency measurement (RDTSC, timing)
-│   │   ├── cache.rs                     # Cache miss tracking
-│   │   ├── tlb.rs                       # TLB miss tracking
-│   │   └── memory.rs                    # Memory usage and alignment utilities
-│   │
-│   ├── optimization/                    # Memory layout optimizations
-│   │   ├── mod.rs
-│   │   ├── alignment.rs                 # Cache-line alignment helpers
-│   │   ├── hugepages.rs                 # Huge page allocation
-│   │   ├── prefetch.rs                  # Prefetching hints
-│   │   └── padding.rs                   # False sharing prevention
-│   │
-│   └── analysis/                        # Data analysis and output
-│       ├── mod.rs
-│       ├── statistics.rs                # Statistical analysis (percentiles, etc.)
-│       ├── export.rs                    # CSV/JSON export
-│       ├── comparison.rs                # Compare implementations
-│       └── visualization.rs             # Generate plot data
-│
-├── benches/                             # Criterion benchmarks
-│   ├── orderbook_ops.rs                 # Benchmark individual operations
-│   ├── scenarios.rs                     # Full scenario benchmarks
-│   ├── cache_behavior.rs                # Cache-specific benchmarks
-│   └── throughput.rs                    # Throughput benchmarks
-│
-├── tests/                               # Integration and correctness tests
-│   ├── correctness.rs                   # Verify matching logic correctness
-│   ├── property_tests.rs                # Property-based tests (proptest)
-│   └── scenarios.rs                     # Test various order flow scenarios
-│
-├── examples/                            # Example usage
-│   ├── simple_orderbook.rs              # Basic orderbook usage
-│   ├── run_benchmark.rs                 # Run a single benchmark
-│   └── compare_implementations.rs       # Compare different implementations
-│
-├── data/                                # Test data and results
-│   ├── workloads/                       # Pre-generated workload files
-│   ├── results/                         # Benchmark results (CSV/JSON)
-│   └── plots/                           # Generated visualization data
-│
-├── scripts/                             # Utility scripts
-│   ├── setup_hugepages.sh               # Configure huge pages on Linux
-│   ├── run_all_benchmarks.sh            # Run complete benchmark suite
-│   ├── analyze_results.py               # Python analysis scripts
-│   └── generate_plots.py                # Generate thesis plots
-│
-└── docs/                                # Additional documentation
-    ├── BENCHMARKING.md                  # How to run benchmarks
-    ├── IMPLEMENTATIONS.md               # Details on each orderbook variant
-    ├── PERFORMANCE_COUNTERS.md          # Guide to perf counters
-    └── RESULTS.md                       # Interpreting results
+A limit order book (LOB) is the core data structure used by electronic exchanges to store outstanding bids and asks. Limit orders add liquidity, cancellations remove resting liquidity, and market orders consume orders from the best available prices. Within each price level, this project uses first-in, first-out priority, giving the usual price-time matching rule.
+
+At matching-engine timescales, performance depends on more than asymptotic complexity. Cache locality, memory layout, pointer chasing, sparse price ranges, and address-translation overhead can dominate operations that otherwise perform little computation. This repository accompanies a master's thesis investigating those effects through interchangeable order-book implementations written in Rust.
+
+The central question is: **how do different data layouts affect insertion, cancellation, and market-order latency under changing price locality and book state?** Rust provides explicit control over representation and allocation while retaining compile-time memory safety, making it suitable for comparing low-level designs without implementing each one in a different programming model.
+
+## Implementations
+
+Every implementation satisfies the same `OrderbookTrait` and supports limit-order insertion, cancellation by identifier, market-order execution, best bid/ask queries, and depth queries.
+
+| Implementation | Representation | Main trade-off |
+|---|---|---|
+| Fixed-tick AoS | A fixed 10,000-level array per side; each level stores complete `Order` values | Direct price indexing, but best-price discovery may scan many empty levels |
+| Fixed-tick SoA | The same fixed price grid with separate ID, side, price, and quantity vectors | Compact field-specific scans, with multiple vectors to update |
+| B-tree AoS | Sparse ordered `BTreeMap` levels containing complete orders | Efficient ordered traversal without a full price grid, with tree-lookup overhead |
+| Hybrid | A 200-level array around tick 5,000 plus B-trees for cold prices | Fast access near the reference price while retaining sparse out-of-range storage |
+
+All variants maintain an order-ID index for cancellation and are checked against one another with deterministic and property-based correctness tests.
+
+## What is implemented
+
+- A common price-time-priority order-book interface and four working representations.
+- Cross-implementation correctness tests for book state, cancellation, and normalized fills.
+- A baseline comparison of insertion, cancellation, and market-order latency.
+- Four price-distribution workloads: [uniform](docs/02_uniform_distribution.md), [clustered](docs/03_clustered_distribution.md), [Zipfian](docs/04_zipfian_distribution.md), and [bursty](docs/05_bursty_distribution.md).
+- Operational workloads covering a 10:1 cancellation ratio, multi-level market sweeps, book build-up, and stable-depth mixed traffic.
+- Isolated experiments for order alignment, huge pages, software prefetching, and market-order matching strategy.
+- CSV export containing minimum, mean, maximum, p50, p95, p99, p99.9, and p99.99 latency.
+- Reproducible SVG figures for the four price-distribution scenarios.
+- A written [experimental methodology](docs/01_methodology.md), including timing boundaries, TSC calibration, statistical aggregation, and limitations.
+
+The current experiments measure **latency**, not throughput or hardware performance counters. On x86-64, operations are bounded with `LFENCE`/`RDTSC` at the start and `RDTSCP`/`LFENCE` at the end. The time-stamp counter is calibrated against a monotonic clock for each run. CSV files retain the directly measured TSC ticks and their derived nanosecond values.
+
+The completed distribution experiments show that no layout dominates every operation. Direct indexing is frequently strong for insertion and cancellation, while the tree and hybrid designs avoid expensive empty-level scans during market-order execution in sparse or centrally concentrated books. These results are hardware- and workload-dependent; the committed CSV files should be treated as experimental observations rather than universal performance guarantees.
+
+## Repository layout
+
+```text
+src/orderbook/          four order-book implementations and common trait
+src/perf/               TSC timing, calibration, and percentile collection
+examples/baseline/      baseline latency benchmark
+examples/distribution/  uniform, clustered, Zipfian, and bursty workloads
+examples/operational/   cancellation, sweep, build-up, and steady-state tests
+examples/optimizations/ isolated memory-layout and access-path experiments
+tests/                  deterministic and property-based correctness tests
+results/                generated benchmark CSV files
+figures/                generated thesis SVG figures
+docs/                   methodology and distribution-scenario chapters
+scripts/                dependency-free SVG generation from result CSVs
 ```
 
-## Module Responsibilities
+## Running the project
 
-### `types/`
-Core domain types used throughout the system. These are the fundamental building blocks.
+The project uses Rust 2024 edition. A recent stable Rust toolchain and Cargo are required. Linux on x86-64 is recommended for results comparable to the included TSC measurements. Python 3 is needed only to regenerate the SVG figures.
 
-- **order.rs**: Order struct, OrderId (u64), OrderSide enum (Bid/Ask)
-- **price.rs**: Price wrapper with tick size validation
-- **quantity.rs**: Quantity wrapper with lot size validation
-- **timestamp.rs**: Nanosecond-precision timestamps
-- **resolution.rs**: Tick and lot size parameters
+Run the correctness suite first:
 
-### `orderbook/`
-Different orderbook implementations, all implementing a common `Orderbook` trait.
-
-**Common trait**:
-```rust
-pub trait Orderbook {
-    fn add_limit_order(&mut self, order: Order) -> Result<(), OrderbookError>;
-    fn execute_market_order(&mut self, side: OrderSide, quantity: Quantity) -> Vec<Fill>;
-    fn cancel_order(&mut self, order_id: OrderId) -> Result<Order, OrderbookError>;
-    fn best_bid(&self) -> Option<Price>;
-    fn best_ask(&self) -> Option<Price>;
-    fn depth_at_price(&self, price: Price, side: OrderSide) -> Quantity;
-    // ... more methods
-}
-```
-
-Each implementation variant lives in its own subdirectory.
-
-### `matching/`
-Matching engine that works with any Orderbook implementation.
-
-- **engine.rs**: Orchestrates order processing
-- **priority.rs**: Implements price-time priority (FIFO queues)
-- **execution.rs**: Generates Fill events when orders match
-
-### `workload/`
-Generates different order flow patterns for testing.
-
-All generators implement a common trait:
-```rust
-pub trait WorkloadGenerator {
-    fn next_event(&mut self) -> OrderEvent;
-    fn reset(&mut self);
-}
-```
-
-### `benchmark/`
-Custom benchmarking harness that integrates with performance counters.
-
-- **harness.rs**: Main benchmarking loop with warmup/measurement phases
-- **metrics.rs**: Collects latency, throughput, cache misses, etc.
-- **config.rs**: TOML/JSON configuration for benchmark parameters
-- **runner.rs**: Runs multiple benchmarks across implementations and scenarios
-
-### `perf/`
-Low-level performance measurement using hardware counters and cycle-accurate timing.
-
-- **counters.rs**: Wraps Linux perf_event API
-- **latency.rs**: RDTSC-based latency measurement
-- **cache.rs**: L1/L2/L3 miss tracking
-- **tlb.rs**: TLB miss tracking
-- **memory.rs**: Memory allocation, alignment checking, huge page support
-
-### `optimization/`
-Memory layout optimization utilities.
-
-- **alignment.rs**: Macros and helpers for cache-line alignment
-- **hugepages.rs**: Allocate memory using 2MB/1GB pages
-- **prefetch.rs**: Software prefetch intrinsics
-- **padding.rs**: Prevent false sharing with padding
-
-### `analysis/`
-Post-processing of benchmark results.
-
-- **statistics.rs**: Calculate p50, p95, p99, p99.9 percentiles
-- **export.rs**: Export to CSV/JSON for external analysis
-- **comparison.rs**: Side-by-side comparison tables
-- **visualization.rs**: Prepare data for plotting (can integrate with plotters crate)
-
-## Key Files
-
-### `src/lib.rs`
-```rust
-pub mod types;
-pub mod orderbook;
-pub mod matching;
-pub mod workload;
-pub mod benchmark;
-pub mod perf;
-pub mod optimization;
-pub mod analysis;
-
-// Re-export commonly used types
-pub use types::{Order, OrderId, OrderSide, Price, Quantity};
-pub use orderbook::Orderbook;
-```
-
-### `src/main.rs`
-CLI tool to run benchmarks:
 ```bash
-# Run all benchmarks
-cargo run --release -- --all
-
-# Run specific implementation with specific workload
-cargo run --release -- --implementation soa --workload clustered
-
-# Enable perf counters (requires Linux + permissions)
-cargo run --release -- --perf --implementation fixed_tick
+cargo test
 ```
 
-### `Cargo.toml`
-```toml
-[package]
-name = "trading"
-version = "0.1.0"
-edition = "2024"
+List all available benchmarks:
 
-[dependencies]
-# Performance measurement
-perf-event = "0.4"
-libc = "0.2"
-
-# Data structures
-arrayvec = "0.7"
-smallvec = "1.11"
-
-# Utilities
-rand = "0.8"
-rand_distr = "0.4"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-csv = "1.3"
-anyhow = "1.0"
-thiserror = "1.0"
-
-# CLI
-clap = { version = "4.4", features = ["derive"] }
-
-# Optional: plotting
-plotters = { version = "0.3", optional = true }
-
-[dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
-proptest = "1.4"
-
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-panic = "abort"
-
-[profile.bench]
-inherits = "release"
-
-[[bench]]
-name = "orderbook_ops"
-harness = false
-
-[[bench]]
-name = "scenarios"
-harness = false
+```bash
+cargo run --release -- --list
 ```
 
-## Data Flow
+Run the baseline comparison:
 
-```
-Workload Generator
-    ↓
-Matching Engine
-    ↓
-Orderbook Implementation
-    ↓
-Performance Counters (measuring)
-    ↓
-Metrics Collector
-    ↓
-Statistical Analysis
-    ↓
-Export (CSV/JSON) → Visualization → Thesis Plots
+```bash
+cargo run --release -- bench_latency
 ```
 
-## Development Workflow
+Run all four distribution scenarios:
 
-1. **Phase 1**: Implement `types/` and basic `orderbook/aos/`
-2. **Phase 2**: Implement `matching/` engine
-3. **Phase 3**: Add `workload/uniform.rs` generator
-4. **Phase 4**: Add basic `benchmark/` harness (without perf counters first)
-5. **Phase 5**: Implement other orderbook variants (SoA, fixed-tick, etc.)
-6. **Phase 6**: Add `perf/` counters integration
-7. **Phase 7**: Implement all workload generators
-8. **Phase 8**: Run full experiments, collect data, analyze
+```bash
+cargo run --release -- \
+  scenario_uniform \
+  scenario_clustered \
+  scenario_zipfian \
+  scenario_bursty
+```
 
-## Testing Strategy
+Run selected operational or optimization experiments in the same way:
 
-- **Unit tests**: Within each module (`mod.rs` or `*_test.rs`)
-- **Integration tests**: In `tests/` directory
-- **Property tests**: Use proptest to verify correctness properties
-- **Benchmarks**: Criterion benchmarks in `benches/`, custom harness in `benchmark/`
+```bash
+cargo run --release -- scenario_high_cancel scenario_sweep
+cargo run --release -- bench_alignment bench_market_order
+```
 
-This structure separates concerns cleanly and makes it easy to add new implementations or workloads independently.
+Run the complete benchmark collection by providing no benchmark names:
+
+```bash
+cargo run --release
+```
+
+Benchmarks use optimized release binaries and many collect one million observations per measurement point, so the complete collection can take substantial time. Scenario runs overwrite their corresponding files in `results/`.
+
+Regenerate a distribution scenario's three SVG figures from its CSV:
+
+```bash
+python3 scripts/generate_thesis_plots.py --scenario uniform
+python3 scripts/generate_thesis_plots.py --scenario clustered
+python3 scripts/generate_thesis_plots.py --scenario zipfian
+python3 scripts/generate_thesis_plots.py --scenario bursty
+```
+
+The CSVs contain aggregate percentiles rather than raw samples. The generated latency graphics are therefore percentile comparisons, while the workload graphics visualize the theoretical price generators.
