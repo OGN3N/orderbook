@@ -41,9 +41,17 @@ SCENARIO_TITLES = {
     "bursty": "Bursty workload",
     "high_cancel": "High-cancellation workload",
     "sweep": "Market-sweep workload",
+    "buildup": "Order-book build-up workload",
 }
 SWEEP_CASES = (("small", 5), ("medium", 20), ("large", 50), ("cross_zone", 150))
 SWEEP_DIRECTIONS = ("buy", "sell")
+BUILDUP_WINDOWS = (
+    ("add_depth_0_499", 0, 499),
+    ("add_depth_2500_2999", 2_500, 2_999),
+    ("add_depth_5000_5499", 5_000, 5_499),
+    ("add_depth_7500_7999", 7_500, 7_999),
+    ("add_depth_10000_10499", 10_000, 10_499),
+)
 
 
 class Svg:
@@ -173,6 +181,23 @@ def load_sweep_rows(path: Path) -> dict[tuple[str, str], dict[str, str]]:
     if missing:
         formatted = ", ".join(f"{op}/{impl}" for op, impl in missing)
         raise ValueError(f"Sweep CSV is missing expected rows: {formatted}")
+    return indexed
+
+
+def load_buildup_rows(path: Path) -> dict[tuple[str, str], dict[str, str]]:
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+
+    indexed = {(row["operation"], row["implementation"]): row for row in rows}
+    missing = [
+        (operation, implementation)
+        for operation, _, _ in BUILDUP_WINDOWS
+        for implementation in IMPLEMENTATIONS
+        if (operation, implementation) not in indexed
+    ]
+    if missing:
+        formatted = ", ".join(f"{op}/{impl}" for op, impl in missing)
+        raise ValueError(f"Build-up CSV is missing expected rows: {formatted}")
     return indexed
 
 
@@ -900,6 +925,188 @@ def draw_sweep_latency_figure(
     svg.write(path)
 
 
+def draw_buildup_model(path: Path) -> None:
+    width, height = 1200, 700
+    svg = Svg(width, height)
+    measured_color = "#2563EB"
+    prefill_color = "#D1D5DB"
+    bid_color = "#60A5FA"
+    ask_color = "#FB923C"
+    hot_color = "#10B981"
+
+    svg.text(width / 2, 40, "Order-book build-up workload", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        66,
+        "Five 500-addition measurement windows in each fresh-book lifecycle",
+        size=16,
+        fill="#374151",
+    )
+
+    left, right = 100, 1120
+    timeline_top, timeline_height = 155, 54
+    total_depth = 10_500
+
+    def depth_x(depth: float) -> float:
+        return left + depth / total_depth * (right - left)
+
+    svg.text(left, 112, "Book-depth progression", size=17, anchor="start", weight="bold")
+    svg.rect(left, timeline_top, right - left, timeline_height, fill=prefill_color, rx=4)
+    for index, (_, start, end) in enumerate(BUILDUP_WINDOWS):
+        x1 = depth_x(start)
+        x2 = depth_x(end + 1)
+        svg.rect(x1, timeline_top, x2 - x1, timeline_height, fill=measured_color)
+        label_y = 135 if index % 2 == 0 else 238
+        connector_y = timeline_top if index % 2 == 0 else timeline_top + timeline_height
+        connector_end_y = label_y + 8 if index % 2 == 0 else label_y - 15
+        svg.line((x1 + x2) / 2, connector_y, (x1 + x2) / 2, connector_end_y, stroke=measured_color)
+        svg.text(
+            (x1 + x2) / 2,
+            label_y,
+            f"{start:,}–{end:,}",
+            size=12,
+            weight="bold",
+            fill="#1D4ED8",
+        )
+
+    svg.text(left, 273, "0", size=12, anchor="start", fill="#4B5563")
+    svg.text(right, 273, "10,500 resting orders", size=12, anchor="end", fill="#4B5563")
+    svg.rect(335, 292, 18, 18, fill=measured_color, rx=2)
+    svg.text(363, 306, "Timed add_order calls", size=13, anchor="start")
+    svg.rect(600, 292, 18, 18, fill=prefill_color, rx=2)
+    svg.text(628, 306, "Untimed prefill", size=13, anchor="start")
+    svg.text(
+        width / 2,
+        342,
+        "Book construction is untimed; the first blue window begins immediately in the new empty book.",
+        size=13,
+        fill="#6B7280",
+    )
+
+    price_top, price_height = 430, 66
+    price_min, split_price, price_max = 1, 5_000, 10_000
+    plot_width = right - left
+
+    def price_x(price: float) -> float:
+        return left + (price - price_min) / (price_max - price_min) * plot_width
+
+    svg.text(left, 395, "Price and side model", size=17, anchor="start", weight="bold")
+    split_x = price_x(split_price)
+    svg.rect(left, price_top, split_x - left, price_height, fill=bid_color, rx=3)
+    svg.rect(split_x, price_top, right - split_x, price_height, fill=ask_color, rx=3)
+    svg.text((left + split_x) / 2, price_top + 40, "Bids: uniform on ticks 1–4,999", size=15, weight="bold", fill="#FFFFFF")
+    svg.text((split_x + right) / 2, price_top + 40, "Asks: uniform on ticks 5,000–9,999", size=15, weight="bold", fill="#FFFFFF")
+
+    hot_left, hot_right = price_x(4_900), price_x(5_100)
+    svg.rect(hot_left, price_top - 7, hot_right - hot_left, price_height + 14, fill=hot_color, opacity=0.9)
+    svg.line((hot_left + hot_right) / 2, price_top - 7, (hot_left + hot_right) / 2, 390, stroke="#047857")
+    svg.text(
+        (hot_left + hot_right) / 2,
+        378,
+        "Hybrid hot zone [4,900, 5,100)",
+        size=12,
+        weight="bold",
+        fill="#047857",
+    )
+
+    for price, label in ((1, "1"), (5_000, "5,000"), (9_999, "9,999")):
+        x = price_x(price)
+        svg.line(x, price_top + price_height, x, price_top + price_height + 6, stroke="#374151")
+        svg.text(x, price_top + price_height + 25, label, size=12, fill="#374151")
+
+    svg.text(
+        width / 2,
+        570,
+        "Each complete window alternates 250 bids and 250 asks; every order has quantity 100.",
+        size=14,
+        fill="#374151",
+    )
+    svg.text(
+        width / 2,
+        604,
+        "Expected hybrid routing: approximately 2% hot-array additions and 98% cold-tree additions.",
+        size=14,
+        weight="bold",
+    )
+    svg.text(
+        width / 2,
+        652,
+        "RNG, order construction, prefill, result checking, and final validation are outside the timed interval.",
+        size=13,
+        fill="#6B7280",
+    )
+    svg.write(path)
+
+
+def draw_buildup_latency_figure(
+    rows: dict[tuple[str, str], dict[str, str]],
+    path: Path,
+    metric: str,
+) -> None:
+    width, height = 1200, 670
+    svg = Svg(width, height)
+    metric_label = "median" if metric == "p50_ns" else "p99"
+    svg.text(width / 2, 40, f"Build-up {metric_label} insertion latency", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        66,
+        "One million measured additions per depth window; latency derived from calibrated TSC ticks",
+        size=14,
+        fill="#4B5563",
+    )
+
+    left, right, top, bottom = 105, 1130, 120, 520
+    plot_width = right - left
+    plot_height = bottom - top
+    all_values = [
+        float(rows[(operation, implementation)][metric])
+        for operation, _, _ in BUILDUP_WINDOWS
+        for implementation in IMPLEMENTATIONS
+    ]
+    y_max = nice_max(max(all_values) * 1.15)
+
+    def y_for(value: float) -> float:
+        return bottom - value / y_max * plot_height
+
+    x_positions = [left + index * plot_width / 4 for index in range(5)]
+    svg.rect(left, top, (x_positions[0] + x_positions[1]) / 2 - left, plot_height, fill="#EFF6FF")
+    svg.text(left + 58, top + 20, "fresh-book window", size=12, fill="#1D4ED8", weight="bold")
+
+    for tick in range(6):
+        value = y_max * tick / 5
+        y = y_for(value)
+        svg.line(left, y, right, y, stroke="#D1D5DB", dash="4 4")
+        svg.text(left - 12, y + 5, f"{value:g}", size=12, anchor="end", fill="#4B5563")
+    svg.line(left, top, left, bottom, stroke="#374151", stroke_width=1.5)
+    svg.line(left, bottom, right, bottom, stroke="#374151", stroke_width=1.5)
+
+    for x, (_, start, end) in zip(x_positions, BUILDUP_WINDOWS):
+        svg.line(x, bottom, x, bottom + 6, stroke="#374151")
+        svg.text(x, bottom + 25, f"{start:,}", size=13, fill="#374151")
+        svg.text(x, bottom + 44, f"({start:,}–{end:,})", size=11, fill="#6B7280")
+
+    for implementation in IMPLEMENTATIONS:
+        values = [
+            float(rows[(operation, implementation)][metric])
+            for operation, _, _ in BUILDUP_WINDOWS
+        ]
+        points = [(x, y_for(value)) for x, value in zip(x_positions, values)]
+        svg.polyline(points, stroke=COLORS[implementation])
+        for x, y in points:
+            svg.circle(x, y, 5, fill=COLORS[implementation])
+
+    svg.text((left + right) / 2, 590, "Starting book depth; measured window shown in parentheses", size=14)
+    svg.text(32, (top + bottom) / 2, "Latency (ns)", size=15, rotate=-90)
+
+    legend_x, legend_y = 205, 640
+    for index, implementation in enumerate(IMPLEMENTATIONS):
+        x = legend_x + index * 235
+        svg.line(x, legend_y - 4, x + 28, legend_y - 4, stroke=COLORS[implementation], stroke_width=4)
+        svg.circle(x + 14, legend_y - 4, 4, fill=COLORS[implementation])
+        svg.text(x + 37, legend_y + 1, IMPLEMENTATION_LABELS[implementation], size=14, anchor="start")
+    svg.write(path)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -936,6 +1143,20 @@ def main() -> None:
         draw_sweep_latency_figure(rows, args.output_dir / names[0], "p50_ns")
         draw_sweep_latency_figure(rows, args.output_dir / names[1], "p99_ns")
         draw_sweep_model(args.output_dir / names[2])
+        for name in names:
+            print(args.output_dir / name)
+        return
+
+    if args.scenario == "buildup":
+        rows = load_buildup_rows(input_path)
+        names = (
+            "buildup_latency_p50.svg",
+            "buildup_latency_p99.svg",
+            "buildup_workload_model.svg",
+        )
+        draw_buildup_latency_figure(rows, args.output_dir / names[0], "p50_ns")
+        draw_buildup_latency_figure(rows, args.output_dir / names[1], "p99_ns")
+        draw_buildup_model(args.output_dir / names[2])
         for name in names:
             print(args.output_dir / name)
         return

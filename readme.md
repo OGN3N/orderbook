@@ -25,10 +25,10 @@ All variants maintain an order-ID index for cancellation and are checked against
 - Cross-implementation correctness tests for book state, cancellation, and normalized fills.
 - A baseline comparison of insertion, cancellation, and market-order latency.
 - Four price-distribution workloads: [uniform](docs/02_uniform_distribution.md), [clustered](docs/03_clustered_distribution.md), [Zipfian](docs/04_zipfian_distribution.md), and [bursty](docs/05_bursty_distribution.md).
-- Operational workloads covering a [10:1 cancellation ratio](docs/06_high_cancel.md), [multi-level market sweeps](docs/07_sweep.md), book build-up, and stable-depth mixed traffic.
+- Operational workloads covering a [10:1 cancellation ratio](docs/06_high_cancel.md), [multi-level market sweeps](docs/07_sweep.md), [order-book build-up](docs/08_buildup.md), and stable-depth mixed traffic.
 - Isolated experiments for order alignment, huge pages, software prefetching, and market-order matching strategy.
 - CSV export containing minimum, mean, maximum, p50, p95, p99, p99.9, and p99.99 latency.
-- Reproducible SVG figures for the four price-distribution scenarios.
+- Reproducible SVG figures for the documented distribution and operational scenarios.
 - A written [experimental methodology](docs/01_methodology.md), including timing boundaries, TSC calibration, statistical aggregation, and limitations.
 
 The current experiments measure **latency**, not throughput or hardware performance counters. On x86-64, operations are bounded with `LFENCE`/`RDTSC` at the start and `RDTSCP`/`LFENCE` at the end. The time-stamp counter is calibrated against a monotonic clock for each run. CSV files retain the directly measured TSC ticks and their derived nanosecond values.
@@ -47,7 +47,7 @@ examples/optimizations/ isolated memory-layout and access-path experiments
 tests/                  deterministic and property-based correctness tests
 results/                generated benchmark CSV files
 figures/                generated thesis SVG figures
-docs/                   methodology and distribution-scenario chapters
+docs/                   methodology and scenario chapters
 scripts/                dependency-free SVG generation from result CSVs
 ```
 
@@ -86,7 +86,7 @@ cargo run --release -- \
 Run selected operational or optimization experiments in the same way:
 
 ```bash
-cargo run --release -- scenario_high_cancel scenario_sweep
+cargo run --release -- scenario_high_cancel scenario_sweep scenario_buildup
 cargo run --release -- bench_alignment bench_market_order
 ```
 
@@ -105,6 +105,7 @@ python3 scripts/generate_thesis_plots.py --scenario uniform
 python3 scripts/generate_thesis_plots.py --scenario clustered
 python3 scripts/generate_thesis_plots.py --scenario zipfian
 python3 scripts/generate_thesis_plots.py --scenario bursty
+python3 scripts/generate_thesis_plots.py --scenario buildup
 ```
 
 The CSVs contain aggregate percentiles rather than raw samples. The generated latency graphics are therefore percentile comparisons, while the workload graphics visualize the theoretical price generators.

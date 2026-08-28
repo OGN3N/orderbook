@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="600.00" y="40.00" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#111827" text-anchor="middle">Order-book build-up workload</text>
+  <text x="600.00" y="66.00" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#374151" text-anchor="middle">Five 500-addition measurement windows in each fresh-book lifecycle</text>
+  <text x="100.00" y="112.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#111827" text-anchor="start">Book-depth progression</text>
+  <rect x="100.00" y="155.00" width="1020.00" height="54.00" fill="#D1D5DB" stroke="none" stroke-width="1" opacity="1" rx="4"/>
+  <rect x="100.00" y="155.00" width="48.57" height="54.00" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <line x1="124.29" y1="155.00" x2="124.29" y2="143.00" stroke="#2563EB" stroke-width="1"/>
+  <text x="124.29" y="135.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#1D4ED8" text-anchor="middle">0–499</text>
+  <rect x="342.86" y="155.00" width="48.57" height="54.00" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <line x1="367.14" y1="209.00" x2="367.14" y2="223.00" stroke="#2563EB" stroke-width="1"/>
+  <text x="367.14" y="238.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#1D4ED8" text-anchor="middle">2,500–2,999</text>
+  <rect x="585.71" y="155.00" width="48.57" height="54.00" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <line x1="610.00" y1="155.00" x2="610.00" y2="143.00" stroke="#2563EB" stroke-width="1"/>
+  <text x="610.00" y="135.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#1D4ED8" text-anchor="middle">5,000–5,499</text>
+  <rect x="828.57" y="155.00" width="48.57" height="54.00" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <line x1="852.86" y1="209.00" x2="852.86" y2="223.00" stroke="#2563EB" stroke-width="1"/>
+  <text x="852.86" y="238.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#1D4ED8" text-anchor="middle">7,500–7,999</text>
+  <rect x="1071.43" y="155.00" width="48.57" height="54.00" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <line x1="1095.71" y1="155.00" x2="1095.71" y2="143.00" stroke="#2563EB" stroke-width="1"/>
+  <text x="1095.71" y="135.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#1D4ED8" text-anchor="middle">10,000–10,499</text>
+  <text x="100.00" y="273.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="start">0</text>
+  <text x="1120.00" y="273.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">10,500 resting orders</text>
+  <rect x="335.00" y="292.00" width="18.00" height="18.00" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="2"/>
+  <text x="363.00" y="306.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#111827" text-anchor="start">Timed add_order calls</text>
+  <rect x="600.00" y="292.00" width="18.00" height="18.00" fill="#D1D5DB" stroke="none" stroke-width="1" opacity="1" rx="2"/>
+  <text x="628.00" y="306.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#111827" text-anchor="start">Untimed prefill</text>
+  <text x="600.00" y="342.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">Book construction is untimed; the first blue window begins immediately in the new empty book.</text>
+  <text x="100.00" y="395.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#111827" text-anchor="start">Price and side model</text>
+  <rect x="100.00" y="430.00" width="509.95" height="66.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <rect x="609.95" y="430.00" width="510.05" height="66.00" fill="#FB923C" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="354.97" y="470.00" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#FFFFFF" text-anchor="middle">Bids: uniform on ticks 1–4,999</text>
+  <text x="864.97" y="470.00" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#FFFFFF" text-anchor="middle">Asks: uniform on ticks 5,000–9,999</text>
+  <rect x="599.75" y="423.00" width="20.40" height="80.00" fill="#10B981" stroke="none" stroke-width="1" opacity="0.9" rx="0"/>
+  <line x1="609.95" y1="423.00" x2="609.95" y2="390.00" stroke="#047857" stroke-width="1"/>
+  <text x="609.95" y="378.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#047857" text-anchor="middle">Hybrid hot zone [4,900, 5,100)</text>
+  <line x1="100.00" y1="496.00" x2="100.00" y2="502.00" stroke="#374151" stroke-width="1"/>
+  <text x="100.00" y="521.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">1</text>
+  <line x1="609.95" y1="496.00" x2="609.95" y2="502.00" stroke="#374151" stroke-width="1"/>
+  <text x="609.95" y="521.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">5,000</text>
+  <line x1="1119.90" y1="496.00" x2="1119.90" y2="502.00" stroke="#374151" stroke-width="1"/>
+  <text x="1119.90" y="521.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">9,999</text>
+  <text x="600.00" y="570.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#374151" text-anchor="middle">Each complete window alternates 250 bids and 250 asks; every order has quantity 100.</text>
+  <text x="600.00" y="604.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#111827" text-anchor="middle">Expected hybrid routing: approximately 2% hot-array additions and 98% cold-tree additions.</text>
+  <text x="600.00" y="652.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">RNG, order construction, prefill, result checking, and final validation are outside the timed interval.</text>
+</svg>
