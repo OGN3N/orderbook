@@ -25,7 +25,7 @@ All variants maintain an order-ID index for cancellation and are checked against
 - Cross-implementation correctness tests for book state, cancellation, and normalized fills.
 - A baseline comparison of insertion, cancellation, and market-order latency.
 - Four price-distribution workloads: [uniform](docs/02_uniform_distribution.md), [clustered](docs/03_clustered_distribution.md), [Zipfian](docs/04_zipfian_distribution.md), and [bursty](docs/05_bursty_distribution.md).
-- Operational workloads covering a 10:1 cancellation ratio, multi-level market sweeps, book build-up, and stable-depth mixed traffic.
+- Operational workloads covering a [10:1 cancellation ratio](docs/06_high_cancel.md), multi-level market sweeps, book build-up, and stable-depth mixed traffic.
 - Isolated experiments for order alignment, huge pages, software prefetching, and market-order matching strategy.
 - CSV export containing minimum, mean, maximum, p50, p95, p99, p99.9, and p99.99 latency.
 - Reproducible SVG figures for the four price-distribution scenarios.

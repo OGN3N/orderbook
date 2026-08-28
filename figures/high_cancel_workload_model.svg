@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650">
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="600.00" y="40.00" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#111827" text-anchor="middle">High-cancellation operational workload</text>
+  <text x="600.00" y="66.00" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#374151" text-anchor="middle">One round: 110 additions → 100 cancellations → 10 successful market orders → empty book</text>
+  <rect x="75.00" y="125.00" width="300.00" height="130.00" fill="#FFFFFF" stroke="#2563EB" stroke-width="3" opacity="1" rx="8"/>
+  <rect x="75.00" y="125.00" width="300.00" height="38.00" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="7"/>
+  <text x="225.00" y="151.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#FFFFFF" text-anchor="middle">1. Add 110 orders</text>
+  <text x="225.00" y="201.00" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#111827" text-anchor="middle">55 bids + 55 asks</text>
+  <text x="225.00" y="230.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">Bids 4,975–4,999; asks 5,000–5,024</text>
+  <rect x="450.00" y="125.00" width="300.00" height="130.00" fill="#FFFFFF" stroke="#F97316" stroke-width="3" opacity="1" rx="8"/>
+  <rect x="450.00" y="125.00" width="300.00" height="38.00" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="7"/>
+  <text x="600.00" y="151.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#FFFFFF" text-anchor="middle">2. Cancel 100 orders</text>
+  <text x="600.00" y="201.00" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#111827" text-anchor="middle">50 bids + 50 asks</text>
+  <text x="600.00" y="230.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">Random order; five survivors per side</text>
+  <rect x="825.00" y="125.00" width="300.00" height="130.00" fill="#FFFFFF" stroke="#059669" stroke-width="3" opacity="1" rx="8"/>
+  <rect x="825.00" y="125.00" width="300.00" height="38.00" fill="#059669" stroke="none" stroke-width="1" opacity="1" rx="7"/>
+  <text x="975.00" y="151.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#FFFFFF" text-anchor="middle">3. Execute 10 orders</text>
+  <text x="975.00" y="201.00" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#111827" text-anchor="middle">5 market buys + 5 market sells</text>
+  <text x="975.00" y="230.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">Each consumes one 100-unit survivor</text>
+  <text x="412.00" y="197.00" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="bold" fill="#6B7280" text-anchor="middle">→</text>
+  <text x="787.00" y="197.00" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="bold" fill="#6B7280" text-anchor="middle">→</text>
+  <text x="100.00" y="326.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#111827" text-anchor="start">Measured operation mix per round</text>
+  <rect x="100.00" y="350.00" width="500.00" height="78.00" fill="#2563EB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="350.00" y="397.00" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#FFFFFF" text-anchor="middle">110 adds</text>
+  <rect x="600.00" y="350.00" width="454.55" height="78.00" fill="#F97316" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="827.27" y="397.00" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#FFFFFF" text-anchor="middle">100 cancels</text>
+  <rect x="1054.55" y="350.00" width="45.45" height="78.00" fill="#059669" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="295.00" y="464.00" width="18.00" height="18.00" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="2"/>
+  <text x="323.00" y="478.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#111827" text-anchor="start">50.0% additions</text>
+  <rect x="505.00" y="464.00" width="18.00" height="18.00" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="2"/>
+  <text x="533.00" y="478.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#111827" text-anchor="start">45.5% cancellations</text>
+  <rect x="735.00" y="464.00" width="18.00" height="18.00" fill="#059669" stroke="none" stroke-width="1" opacity="1" rx="2"/>
+  <text x="763.00" y="478.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#111827" text-anchor="start">4.5% market orders</text>
+  <text x="600.00" y="548.00" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#111827" text-anchor="middle">Cancellation-to-trade ratio: 100 cancelled resting orders / 10 traded resting orders = 10:1</text>
+  <text x="600.00" y="580.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#374151" text-anchor="middle">All prices lie inside the hybrid hot zone [4,900, 5,100); each order has quantity 100.</text>
+  <text x="600.00" y="620.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">Each book batch uses 10 unmeasured warm-up rounds followed by 100 measured rounds.</text>
+</svg>

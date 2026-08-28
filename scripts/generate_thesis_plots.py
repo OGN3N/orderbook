@@ -39,6 +39,7 @@ SCENARIO_TITLES = {
     "clustered": "Clustered workload",
     "zipfian": "Zipfian workload",
     "bursty": "Bursty workload",
+    "high_cancel": "High-cancellation workload",
 }
 
 
@@ -619,6 +620,85 @@ def draw_bursty_model(path: Path) -> None:
     svg.write(path)
 
 
+def draw_high_cancel_model(path: Path) -> None:
+    width, height = 1200, 650
+    svg = Svg(width, height)
+    add_color = "#2563EB"
+    cancel_color = "#F97316"
+    market_color = "#059669"
+
+    svg.text(width / 2, 40, "High-cancellation operational workload", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        66,
+        "One round: 110 additions → 100 cancellations → 10 successful market orders → empty book",
+        size=16,
+        fill="#374151",
+    )
+
+    box_y, box_height, box_width = 125, 130, 300
+    boxes = (
+        (75, add_color, "1. Add 110 orders", "55 bids + 55 asks", "Bids 4,975–4,999; asks 5,000–5,024"),
+        (450, cancel_color, "2. Cancel 100 orders", "50 bids + 50 asks", "Random order; five survivors per side"),
+        (825, market_color, "3. Execute 10 orders", "5 market buys + 5 market sells", "Each consumes one 100-unit survivor"),
+    )
+    for x, color, heading, detail, note in boxes:
+        svg.rect(x, box_y, box_width, box_height, fill="#FFFFFF", stroke=color, stroke_width=3, rx=8)
+        svg.rect(x, box_y, box_width, 38, fill=color, rx=7)
+        svg.text(x + box_width / 2, box_y + 26, heading, size=17, weight="bold", fill="#FFFFFF")
+        svg.text(x + box_width / 2, box_y + 76, detail, size=15, weight="bold")
+        svg.text(x + box_width / 2, box_y + 105, note, size=12, fill="#4B5563")
+    svg.text(412, box_y + 72, "→", size=34, weight="bold", fill="#6B7280")
+    svg.text(787, box_y + 72, "→", size=34, weight="bold", fill="#6B7280")
+
+    svg.text(100, 326, "Measured operation mix per round", size=17, anchor="start", weight="bold")
+    bar_left, bar_right, bar_top, bar_height = 100, 1100, 350, 78
+    total_operations = 220
+    segments = (
+        (110, add_color, "110 adds"),
+        (100, cancel_color, "100 cancels"),
+        (10, market_color, "10 market"),
+    )
+    x = bar_left
+    for count, color, label in segments:
+        segment_width = (bar_right - bar_left) * count / total_operations
+        svg.rect(x, bar_top, segment_width, bar_height, fill=color, stroke="#FFFFFF", stroke_width=1)
+        if segment_width >= 100:
+            svg.text(x + segment_width / 2, bar_top + 47, label, size=16, weight="bold", fill="#FFFFFF")
+        x += segment_width
+
+    legend_y = 478
+    svg.rect(295, legend_y - 14, 18, 18, fill=add_color, rx=2)
+    svg.text(323, legend_y, "50.0% additions", size=14, anchor="start")
+    svg.rect(505, legend_y - 14, 18, 18, fill=cancel_color, rx=2)
+    svg.text(533, legend_y, "45.5% cancellations", size=14, anchor="start")
+    svg.rect(735, legend_y - 14, 18, 18, fill=market_color, rx=2)
+    svg.text(763, legend_y, "4.5% market orders", size=14, anchor="start")
+
+    svg.text(
+        width / 2,
+        548,
+        "Cancellation-to-trade ratio: 100 cancelled resting orders / 10 traded resting orders = 10:1",
+        size=15,
+        weight="bold",
+    )
+    svg.text(
+        width / 2,
+        580,
+        "All prices lie inside the hybrid hot zone [4,900, 5,100); each order has quantity 100.",
+        size=14,
+        fill="#374151",
+    )
+    svg.text(
+        width / 2,
+        620,
+        "Each book batch uses 10 unmeasured warm-up rounds followed by 100 measured rounds.",
+        size=13,
+        fill="#6B7280",
+    )
+    svg.write(path)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -661,8 +741,10 @@ def main() -> None:
         draw_clustered_model(args.output_dir / names[2])
     elif args.scenario == "zipfian":
         draw_zipfian_model(args.output_dir / names[2])
-    else:
+    elif args.scenario == "bursty":
         draw_bursty_model(args.output_dir / names[2])
+    else:
+        draw_high_cancel_model(args.output_dir / names[2])
 
     for name in names:
         print(args.output_dir / name)
