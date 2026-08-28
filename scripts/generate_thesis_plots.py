@@ -40,7 +40,10 @@ SCENARIO_TITLES = {
     "zipfian": "Zipfian workload",
     "bursty": "Bursty workload",
     "high_cancel": "High-cancellation workload",
+    "sweep": "Market-sweep workload",
 }
+SWEEP_CASES = (("small", 5), ("medium", 20), ("large", 50), ("cross_zone", 150))
+SWEEP_DIRECTIONS = ("buy", "sell")
 
 
 class Svg:
@@ -148,6 +151,28 @@ def load_rows(path: Path) -> dict[tuple[str, str], dict[str, str]]:
     if missing:
         formatted = ", ".join(f"{op}/{impl}" for op, impl in missing)
         raise ValueError(f"CSV is missing expected rows: {formatted}")
+    return indexed
+
+
+def load_sweep_rows(path: Path) -> dict[tuple[str, str], dict[str, str]]:
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+
+    indexed = {(row["operation"], row["implementation"]): row for row in rows}
+    expected_operations = [
+        f"{case}_{direction}_sweep"
+        for case, _ in SWEEP_CASES
+        for direction in SWEEP_DIRECTIONS
+    ]
+    missing = [
+        (operation, implementation)
+        for operation in expected_operations
+        for implementation in IMPLEMENTATIONS
+        if (operation, implementation) not in indexed
+    ]
+    if missing:
+        formatted = ", ".join(f"{op}/{impl}" for op, impl in missing)
+        raise ValueError(f"Sweep CSV is missing expected rows: {formatted}")
     return indexed
 
 
@@ -699,6 +724,182 @@ def draw_high_cancel_model(path: Path) -> None:
     svg.write(path)
 
 
+def draw_sweep_model(path: Path) -> None:
+    width, height = 1200, 700
+    svg = Svg(width, height)
+    svg.text(width / 2, 40, "Market-order sweep workload", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        66,
+        "Dense 400-level book; one 100-unit order at every price level",
+        size=16,
+        fill="#374151",
+    )
+
+    left, right = 220, 1120
+    price_min, price_max = 4_800, 5_199
+    plot_width = right - left
+
+    def x_for(price: float) -> float:
+        return left + (price - price_min) / (price_max - price_min) * plot_width
+
+    hot_left, hot_right = x_for(4_900), x_for(5_100)
+    svg.rect(hot_left, 100, hot_right - hot_left, 430, fill="#ECFDF5", opacity=0.85)
+    svg.text((hot_left + hot_right) / 2, 116, "Hybrid hot zone [4,900, 5,100)", size=13, weight="bold", fill="#047857")
+
+    book_top, book_height = 135, 46
+    center_x = x_for(4_999.5)
+    svg.rect(x_for(4_800), book_top, center_x - x_for(4_800), book_height, fill="#60A5FA")
+    svg.rect(center_x, book_top, x_for(5_199) - center_x, book_height, fill="#FB923C")
+    svg.text((x_for(4_800) + center_x) / 2, book_top + 29, "200 bid levels: 4,999 down to 4,800", size=14, weight="bold", fill="#FFFFFF")
+    svg.text((center_x + x_for(5_199)) / 2, book_top + 29, "200 ask levels: 5,000 up to 5,199", size=14, weight="bold", fill="#FFFFFF")
+
+    for price, label in ((4_800, "4,800"), (4_900, "4,900"), (4_999.5, "4,999 | 5,000"), (5_100, "5,100"), (5_199, "5,199")):
+        x = x_for(price)
+        svg.line(x, book_top + book_height, x, 530, stroke="#9CA3AF", dash="4 4")
+        svg.text(x, book_top + book_height + 22, label, size=12, fill="#374151")
+
+    svg.text((left + center_x) / 2, 228, "← Market sell consumes bids", size=14, weight="bold", fill="#1D4ED8")
+    svg.text((center_x + right) / 2, 228, "Market buy consumes asks →", size=14, weight="bold", fill="#C2410C")
+
+    hot_color = "#10B981"
+    cold_color = "#F97316"
+    row_y_values = (260, 330, 400, 470)
+    for (case, levels), row_y in zip(SWEEP_CASES, row_y_values):
+        quantity = levels * 100
+        svg.text(
+            left - 14,
+            row_y + 20,
+            f"{levels} levels / {quantity:,} units",
+            size=13,
+            anchor="end",
+            weight="bold",
+        )
+        sell_start = 5_000 - levels
+        buy_end = 5_000 + levels
+
+        sell_hot_start = max(sell_start, 4_900)
+        buy_hot_end = min(buy_end, 5_100)
+        svg.rect(x_for(sell_hot_start), row_y, center_x - x_for(sell_hot_start), 32, fill=hot_color, rx=3)
+        svg.rect(center_x, row_y, x_for(buy_hot_end) - center_x, 32, fill=hot_color, rx=3)
+
+        if sell_start < 4_900:
+            svg.rect(x_for(sell_start), row_y, x_for(4_900) - x_for(sell_start), 32, fill=cold_color, rx=3)
+            svg.text((x_for(sell_start) + x_for(4_900)) / 2, row_y + 21, "50 cold", size=12, weight="bold", fill="#FFFFFF")
+        if buy_end > 5_100:
+            svg.rect(x_for(5_100), row_y, x_for(buy_end) - x_for(5_100), 32, fill=cold_color, rx=3)
+            svg.text((x_for(5_100) + x_for(buy_end)) / 2, row_y + 21, "50 cold", size=12, weight="bold", fill="#FFFFFF")
+
+    svg.rect(375, 558, 18, 18, fill=hot_color, rx=2)
+    svg.text(403, 572, "Levels in the hybrid hot array", size=13, anchor="start")
+    svg.rect(660, 558, 18, 18, fill=cold_color, rx=2)
+    svg.text(688, 572, "Levels in the hybrid cold B-tree", size=13, anchor="start")
+    svg.text(
+        width / 2,
+        620,
+        "The 5-, 20-, and 50-level sweeps remain hot; the 150-level sweep consumes 100 hot and 50 cold levels.",
+        size=14,
+        fill="#374151",
+    )
+    svg.text(
+        width / 2,
+        660,
+        "Only execute_market_order is timed; validation, fill destruction, and full replenishment are untimed.",
+        size=13,
+        fill="#6B7280",
+    )
+    svg.write(path)
+
+
+def draw_sweep_latency_figure(
+    rows: dict[tuple[str, str], dict[str, str]],
+    path: Path,
+    metric: str,
+) -> None:
+    width, height = 1560, 680
+    svg = Svg(width, height)
+    metric_label = "median" if metric == "p50_ns" else "p99"
+    svg.text(width / 2, 38, f"Market-sweep {metric_label} latency versus depth", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        63,
+        "One million measurements per point; logarithmic latency axis; the final point crosses the hybrid boundary",
+        size=14,
+        fill="#4B5563",
+    )
+
+    panel_lefts = (100, 830)
+    panel_width = 620
+    top, bottom = 120, 550
+    plot_height = bottom - top
+    y_min, y_max = 300.0, 20_000.0
+    y_ticks = (500.0, 1_000.0, 2_000.0, 5_000.0, 10_000.0, 20_000.0)
+
+    def y_for(value: float) -> float:
+        position = math.log10(value / y_min) / math.log10(y_max / y_min)
+        return bottom - position * plot_height
+
+    for panel_index, direction in enumerate(SWEEP_DIRECTIONS):
+        left = panel_lefts[panel_index]
+        x_positions = [left + 55 + index * (panel_width - 110) / 3 for index in range(4)]
+        cross_boundary_x = (x_positions[2] + x_positions[3]) / 2
+        svg.rect(
+            cross_boundary_x,
+            top,
+            left + panel_width - cross_boundary_x,
+            plot_height,
+            fill="#FFF7ED",
+            opacity=0.8,
+        )
+        svg.text(
+            (cross_boundary_x + left + panel_width) / 2,
+            top + 19,
+            "hot/cold case",
+            size=12,
+            fill="#C2410C",
+            weight="bold",
+        )
+        svg.text(
+            left + panel_width / 2,
+            101,
+            "Market buy (consumes asks)" if direction == "buy" else "Market sell (consumes bids)",
+            size=18,
+            weight="bold",
+        )
+        for tick in y_ticks:
+            y = y_for(tick)
+            svg.line(left, y, left + panel_width, y, stroke="#D1D5DB", dash="4 4")
+            svg.text(left - 10, y + 5, format_ns(tick), size=12, anchor="end", fill="#4B5563")
+        svg.line(left, top, left, bottom, stroke="#374151", stroke_width=1.5)
+        svg.line(left, bottom, left + panel_width, bottom, stroke="#374151", stroke_width=1.5)
+
+        for x, (_, levels) in zip(x_positions, SWEEP_CASES):
+            svg.line(x, bottom, x, bottom + 5, stroke="#374151")
+            svg.text(x, bottom + 25, str(levels), size=13, fill="#374151")
+
+        for implementation in IMPLEMENTATIONS:
+            values = [
+                float(rows[(f"{case}_{direction}_sweep", implementation)][metric])
+                for case, _ in SWEEP_CASES
+            ]
+            points = [(x, y_for(value)) for x, value in zip(x_positions, values)]
+            svg.polyline(points, stroke=COLORS[implementation])
+            for x, y in points:
+                svg.circle(x, y, 5, fill=COLORS[implementation])
+
+        svg.text(left + panel_width / 2, 600, "Price levels consumed", size=14)
+        if panel_index == 0:
+            svg.text(left - 67, (top + bottom) / 2, "Latency (log scale)", size=15, rotate=-90)
+
+    legend_x, legend_y = 380, 652
+    for index, implementation in enumerate(IMPLEMENTATIONS):
+        x = legend_x + index * 215
+        svg.line(x, legend_y - 4, x + 28, legend_y - 4, stroke=COLORS[implementation], stroke_width=4)
+        svg.circle(x + 14, legend_y - 4, 4, fill=COLORS[implementation])
+        svg.text(x + 37, legend_y + 1, IMPLEMENTATION_LABELS[implementation], size=14, anchor="start")
+    svg.write(path)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -724,6 +925,21 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     input_path = args.input or Path(f"results/scenario_{args.scenario}.csv")
+
+    if args.scenario == "sweep":
+        rows = load_sweep_rows(input_path)
+        names = (
+            "sweep_latency_p50.svg",
+            "sweep_latency_p99.svg",
+            "sweep_workload_model.svg",
+        )
+        draw_sweep_latency_figure(rows, args.output_dir / names[0], "p50_ns")
+        draw_sweep_latency_figure(rows, args.output_dir / names[1], "p99_ns")
+        draw_sweep_model(args.output_dir / names[2])
+        for name in names:
+            print(args.output_dir / name)
+        return
+
     rows = load_rows(input_path)
     prefix = args.scenario
     scenario_title = SCENARIO_TITLES[args.scenario]

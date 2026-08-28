@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="600.00" y="40.00" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#111827" text-anchor="middle">Market-order sweep workload</text>
+  <text x="600.00" y="66.00" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#374151" text-anchor="middle">Dense 400-level book; one 100-unit order at every price level</text>
+  <rect x="445.56" y="100.00" width="451.13" height="430.00" fill="#ECFDF5" stroke="none" stroke-width="1" opacity="0.85" rx="0"/>
+  <text x="671.13" y="116.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#047857" text-anchor="middle">Hybrid hot zone [4,900, 5,100)</text>
+  <rect x="220.00" y="135.00" width="450.00" height="46.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="670.00" y="135.00" width="450.00" height="46.00" fill="#FB923C" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <text x="445.00" y="164.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">200 bid levels: 4,999 down to 4,800</text>
+  <text x="895.00" y="164.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">200 ask levels: 5,000 up to 5,199</text>
+  <line x1="220.00" y1="181.00" x2="220.00" y2="530.00" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="220.00" y="203.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">4,800</text>
+  <line x1="445.56" y1="181.00" x2="445.56" y2="530.00" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="445.56" y="203.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">4,900</text>
+  <line x1="670.00" y1="181.00" x2="670.00" y2="530.00" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="670.00" y="203.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">4,999 | 5,000</text>
+  <line x1="896.69" y1="181.00" x2="896.69" y2="530.00" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="896.69" y="203.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">5,100</text>
+  <line x1="1120.00" y1="181.00" x2="1120.00" y2="530.00" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="1120.00" y="203.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#374151" text-anchor="middle">5,199</text>
+  <text x="445.00" y="228.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#1D4ED8" text-anchor="middle">← Market sell consumes bids</text>
+  <text x="895.00" y="228.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#C2410C" text-anchor="middle">Market buy consumes asks →</text>
+  <text x="206.00" y="280.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#111827" text-anchor="end">5 levels / 500 units</text>
+  <rect x="659.85" y="260.00" width="10.15" height="32.00" fill="#10B981" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <rect x="670.00" y="260.00" width="12.41" height="32.00" fill="#10B981" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="206.00" y="350.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#111827" text-anchor="end">20 levels / 2,000 units</text>
+  <rect x="626.02" y="330.00" width="43.98" height="32.00" fill="#10B981" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <rect x="670.00" y="330.00" width="46.24" height="32.00" fill="#10B981" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="206.00" y="420.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#111827" text-anchor="end">50 levels / 5,000 units</text>
+  <rect x="558.35" y="400.00" width="111.65" height="32.00" fill="#10B981" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <rect x="670.00" y="400.00" width="113.91" height="32.00" fill="#10B981" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="206.00" y="490.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#111827" text-anchor="end">150 levels / 15,000 units</text>
+  <rect x="445.56" y="470.00" width="224.44" height="32.00" fill="#10B981" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <rect x="670.00" y="470.00" width="226.69" height="32.00" fill="#10B981" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <rect x="332.78" y="470.00" width="112.78" height="32.00" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="389.17" y="491.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#FFFFFF" text-anchor="middle">50 cold</text>
+  <rect x="896.69" y="470.00" width="112.78" height="32.00" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="953.08" y="491.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#FFFFFF" text-anchor="middle">50 cold</text>
+  <rect x="375.00" y="558.00" width="18.00" height="18.00" fill="#10B981" stroke="none" stroke-width="1" opacity="1" rx="2"/>
+  <text x="403.00" y="572.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#111827" text-anchor="start">Levels in the hybrid hot array</text>
+  <rect x="660.00" y="558.00" width="18.00" height="18.00" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="2"/>
+  <text x="688.00" y="572.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#111827" text-anchor="start">Levels in the hybrid cold B-tree</text>
+  <text x="600.00" y="620.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#374151" text-anchor="middle">The 5-, 20-, and 50-level sweeps remain hot; the 150-level sweep consumes 100 hot and 50 cold levels.</text>
+  <text x="600.00" y="660.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">Only execute_market_order is timed; validation, fill destruction, and full replenishment are untimed.</text>
+</svg>
