@@ -26,9 +26,9 @@ All variants maintain an order-ID index for cancellation and are checked against
 - A baseline comparison of insertion, cancellation, and market-order latency.
 - Four price-distribution workloads: [uniform](docs/02_uniform_distribution.md), [clustered](docs/03_clustered_distribution.md), [Zipfian](docs/04_zipfian_distribution.md), and [bursty](docs/05_bursty_distribution.md).
 - Operational workloads covering a [10:1 cancellation ratio](docs/06_high_cancel.md), [multi-level market sweeps](docs/07_sweep.md), [order-book build-up](docs/08_buildup.md), and stable-depth mixed traffic.
-- Isolated experiments for [order-record alignment and padding](docs/09_alignment.md), huge pages, software prefetching, and market-order matching strategy.
+- Isolated experiments for [order-record alignment and padding](docs/09_alignment.md), huge pages, [software prefetching](docs/10_prefetch.md), and market-order matching strategy.
 - CSV export containing minimum, mean, maximum, p50, p95, p99, p99.9, and p99.99 latency.
-- Reproducible SVG figures for the documented distribution and operational scenarios.
+- Reproducible SVG figures for the documented workloads and optimization experiments.
 - A written [experimental methodology](docs/01_methodology.md), including timing boundaries, TSC calibration, statistical aggregation, and limitations.
 
 The current experiments measure **latency**, not throughput or hardware performance counters. On x86-64, operations are bounded with `LFENCE`/`RDTSC` at the start and `RDTSCP`/`LFENCE` at the end. The time-stamp counter is calibrated against a monotonic clock for each run. CSV files retain the directly measured TSC ticks and their derived nanosecond values.
@@ -87,7 +87,7 @@ Run selected operational or optimization experiments in the same way:
 
 ```bash
 cargo run --release -- scenario_high_cancel scenario_sweep scenario_buildup
-cargo run --release -- bench_alignment bench_market_order
+cargo run --release -- bench_alignment bench_prefetch
 ```
 
 Run the complete benchmark collection by providing no benchmark names:
@@ -98,7 +98,7 @@ cargo run --release
 
 Benchmarks use optimized release binaries and many collect one million observations per measurement point, so the complete collection can take substantial time. Scenario runs overwrite their corresponding files in `results/`.
 
-Regenerate a distribution scenario's three SVG figures from its CSV:
+Regenerate a documented experiment's three SVG figures from its CSV:
 
 ```bash
 python3 scripts/generate_thesis_plots.py --scenario uniform
@@ -107,6 +107,7 @@ python3 scripts/generate_thesis_plots.py --scenario zipfian
 python3 scripts/generate_thesis_plots.py --scenario bursty
 python3 scripts/generate_thesis_plots.py --scenario buildup
 python3 scripts/generate_thesis_plots.py --scenario alignment
+python3 scripts/generate_thesis_plots.py --scenario prefetch
 ```
 
 The CSVs contain aggregate percentiles rather than raw samples. The generated latency graphics are therefore percentile comparisons, while the other graphics visualize workload models or memory layouts rather than raw observations.

@@ -43,6 +43,7 @@ SCENARIO_TITLES = {
     "sweep": "Market-sweep workload",
     "buildup": "Order-book build-up workload",
     "alignment": "Alignment and padding experiment",
+    "prefetch": "Software-prefetch experiment",
 }
 SWEEP_CASES = (("small", 5), ("medium", 20), ("large", 50), ("cross_zone", 150))
 SWEEP_DIRECTIONS = ("buy", "sell")
@@ -69,6 +70,48 @@ ALIGNMENT_OPERATIONS = (
     ("random_read_batch_64", "Random access", "64 reads"),
     ("insert_batch_10000", "Vec construction", "10,000 pushes"),
 )
+PREFETCH_OPERATIONS = (
+    (
+        "sequential_scan_10000_levels",
+        "Sequential level scan",
+        "10,000 header checks",
+        (
+            ("no_prefetch", "None"),
+            ("prefetch_header_plus_4", "Header +4"),
+            ("prefetch_header_plus_16", "Header +16"),
+        ),
+    ),
+    (
+        "random_access_10000_reads",
+        "Known random access",
+        "10,000 header reads",
+        (
+            ("no_prefetch", "None"),
+            ("prefetch_header_plus_1", "Header +1"),
+            ("prefetch_header_plus_4", "Header +4"),
+        ),
+    ),
+    (
+        "pointer_chase_10000_levels",
+        "Sparse pointer chase",
+        "10,000 headers + 1,465 orders",
+        (
+            ("no_prefetch", "None"),
+            ("prefetch_heap_plus_2", "Heap +2"),
+            ("prefetch_heap_plus_8", "Heap +8"),
+        ),
+    ),
+    (
+        "market_sweep_20_levels_60_orders",
+        "Simulated market sweep",
+        "scan to 5,000; consume 60 orders",
+        (
+            ("no_prefetch", "None"),
+            ("prefetch_heap_window_4", "Heap ≤4"),
+        ),
+    ),
+)
+PREFETCH_COLORS = ("#2563EB", "#F97316", "#7C3AED")
 
 
 class Svg:
@@ -232,6 +275,23 @@ def load_alignment_rows(path: Path) -> dict[tuple[str, str], dict[str, str]]:
     if missing:
         formatted = ", ".join(f"{op}/{layout}" for op, layout in missing)
         raise ValueError(f"Alignment CSV is missing expected rows: {formatted}")
+    return indexed
+
+
+def load_prefetch_rows(path: Path) -> dict[tuple[str, str], dict[str, str]]:
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+
+    indexed = {(row["operation"], row["implementation"]): row for row in rows}
+    missing = [
+        (operation, variant)
+        for operation, _, _, variants in PREFETCH_OPERATIONS
+        for variant, _ in variants
+        if (operation, variant) not in indexed
+    ]
+    if missing:
+        formatted = ", ".join(f"{op}/{variant}" for op, variant in missing)
+        raise ValueError(f"Prefetch CSV is missing expected rows: {formatted}")
     return indexed
 
 
@@ -1310,6 +1370,171 @@ def draw_alignment_latency_figure(
     svg.write(path)
 
 
+def draw_prefetch_model(path: Path) -> None:
+    width, height = 1300, 850
+    svg = Svg(width, height)
+    baseline_color = "#2563EB"
+    near_color = "#F97316"
+    far_color = "#7C3AED"
+    header_color = "#D1D5DB"
+    heap_color = "#A7F3D0"
+
+    svg.text(width / 2, 40, "Software-prefetch experiment", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        66,
+        "Four timed batches using the x86 T0 high-temporal-locality hint",
+        size=16,
+        fill="#374151",
+    )
+
+    card_left, card_width, card_height = 75, 1150, 155
+    card_y_values = (100, 280, 460, 640)
+    for y in card_y_values:
+        svg.rect(card_left, y, card_width, card_height, fill="#F9FAFB", stroke="#D1D5DB", rx=8)
+
+    # Sequential header scan.
+    y = card_y_values[0]
+    svg.text(100, y + 28, "1. Sequential scan", size=17, anchor="start", weight="bold")
+    svg.text(100, y + 52, "Read Vec::len for all 10,000 contiguous level headers", size=13, anchor="start", fill="#4B5563")
+    cells_left, cell_y, cell_width = 460, y + 48, 43
+    for index in range(17):
+        fill = header_color
+        if index == 1:
+            fill = baseline_color
+        elif index == 5:
+            fill = near_color
+        elif index == 16:
+            fill = far_color
+        svg.rect(cells_left + index * cell_width, cell_y, cell_width - 3, 38, fill=fill, stroke="#FFFFFF")
+    svg.text(cells_left + 1.5 * cell_width, y + 112, "current i", size=12, fill="#1D4ED8")
+    svg.text(cells_left + 5.5 * cell_width, y + 132, "hint i + 4", size=12, fill="#C2410C")
+    svg.text(cells_left + 16.5 * cell_width, y + 112, "hint i + 16", size=12, fill="#6D28D9")
+
+    # Random header access with a known index stream.
+    y = card_y_values[1]
+    svg.text(100, y + 28, "2. Known random access", size=17, anchor="start", weight="bold")
+    svg.text(100, y + 52, "Read 10,000 pre-generated random level indices", size=13, anchor="start", fill="#4B5563")
+    boxes = (
+        (470, baseline_color, "index i", "current header"),
+        (735, near_color, "index i + 1", "near hint"),
+        (1000, far_color, "index i + 4", "far hint"),
+    )
+    for x, color, heading, detail in boxes:
+        svg.rect(x, y + 48, 165, 62, fill="#FFFFFF", stroke=color, stroke_width=3, rx=6)
+        svg.text(x + 82.5, y + 73, heading, size=14, weight="bold", fill=color)
+        svg.text(x + 82.5, y + 96, detail, size=12, fill="#4B5563")
+    svg.text(682, y + 87, "→", size=28, fill="#6B7280")
+    svg.text(947, y + 87, "→", size=28, fill="#6B7280")
+    svg.text(817, y + 135, "Future addresses are known from the index array.", size=12, fill="#6B7280")
+
+    # Sparse pointer chase.
+    y = card_y_values[2]
+    svg.text(100, y + 28, "3. Sparse pointer chase", size=17, anchor="start", weight="bold")
+    svg.text(100, y + 52, "Scan 10,000 headers; 486 levels contain 1,465 heap orders", size=13, anchor="start", fill="#4B5563")
+    header_x_values = (500, 740, 980)
+    labels = ("level i", "level i + 2", "level i + 8")
+    colors = (baseline_color, near_color, far_color)
+    for x, label, color in zip(header_x_values, labels, colors):
+        svg.rect(x, y + 38, 145, 38, fill=header_color, stroke=color, stroke_width=2, rx=4)
+        svg.text(x + 72.5, y + 63, label, size=13, weight="bold")
+        svg.line(x + 72.5, y + 76, x + 72.5, y + 101, stroke=color, stroke_width=2)
+        svg.rect(x + 17, y + 101, 111, 34, fill=heap_color, stroke=color, stroke_width=2, rx=4)
+        svg.text(x + 72.5, y + 123, "heap orders", size=12)
+    svg.text(860, y + 151, "Hints target heap data only when the future level is non-empty.", size=12, fill="#6B7280")
+
+    # Simulated market sweep.
+    y = card_y_values[3]
+    svg.text(100, y + 28, "4. Simulated market sweep", size=17, anchor="start", weight="bold")
+    svg.text(100, y + 52, "Consume 3 orders at each of 20 consecutive levels", size=13, anchor="start", fill="#4B5563")
+    bar_left, bar_y = 455, y + 45
+    svg.rect(bar_left, bar_y, 470, 48, fill=header_color, rx=3)
+    svg.rect(bar_left + 470, bar_y, 105, 48, fill="#34D399")
+    svg.rect(bar_left + 575, bar_y, 120, 48, fill="#DDD6FE", rx=3)
+    svg.text(bar_left + 235, bar_y + 30, "indices 0–4,999: empty scan", size=14, weight="bold", fill="#374151")
+    svg.text(bar_left + 522.5, bar_y + 30, "20 levels", size=12, weight="bold")
+    svg.text(bar_left + 635, bar_y + 30, "50 noise draws", size=12)
+    svg.line(bar_left + 450, y + 113, bar_left + 520, y + 113, stroke=near_color, stroke_width=3)
+    svg.text(bar_left + 485, y + 137, "look ahead at most four headers", size=12, fill="#C2410C")
+
+    svg.rect(310, 812, 18, 18, fill=baseline_color, rx=2)
+    svg.text(338, 826, "current access", size=12, anchor="start")
+    svg.rect(485, 812, 18, 18, fill=near_color, rx=2)
+    svg.text(513, 826, "near prefetch", size=12, anchor="start")
+    svg.rect(670, 812, 18, 18, fill=far_color, rx=2)
+    svg.text(698, 826, "far prefetch", size=12, anchor="start")
+    svg.text(1010, 826, "All hints use _MM_HINT_T0.", size=12, fill="#6B7280")
+    svg.write(path)
+
+
+def draw_prefetch_latency_figure(
+    rows: dict[tuple[str, str], dict[str, str]],
+    path: Path,
+    metric: str,
+) -> None:
+    width, height = 1500, 860
+    svg = Svg(width, height)
+    metric_label = "median" if metric == "p50_ns" else "p99"
+    svg.text(width / 2, 40, f"Software-prefetch {metric_label} batch latency", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        66,
+        "1,000 samples per bar; each panel has its own scale and batch definition",
+        size=14,
+        fill="#4B5563",
+    )
+
+    panel_lefts = (95, 825, 95, 825)
+    panel_tops = (140, 140, 500, 500)
+    panel_width, plot_height = 580, 235
+
+    for panel_index, (operation, title, batch, variants) in enumerate(PREFETCH_OPERATIONS):
+        left = panel_lefts[panel_index]
+        top = panel_tops[panel_index]
+        bottom = top + plot_height
+        values = [float(rows[(operation, variant)][metric]) for variant, _ in variants]
+        y_max = nice_max(max(values) * 1.15)
+
+        svg.text(left + panel_width / 2, top - 43, title, size=18, weight="bold")
+        svg.text(left + panel_width / 2, top - 22, f"Timed batch: {batch}", size=12, fill="#4B5563")
+        for tick in range(6):
+            value = y_max * tick / 5
+            y = bottom - plot_height * value / y_max
+            svg.line(left, y, left + panel_width, y, stroke="#D1D5DB", dash="4 4")
+            svg.text(left - 10, y + 5, format_ns(value), size=11, anchor="end", fill="#4B5563")
+        svg.line(left, top, left, bottom, stroke="#374151", stroke_width=1.5)
+        svg.line(left, bottom, left + panel_width, bottom, stroke="#374151", stroke_width=1.5)
+
+        bar_count = len(variants)
+        spacing = panel_width / (bar_count + 1)
+        for index, ((_, label), value) in enumerate(zip(variants, values)):
+            center = left + spacing * (index + 1)
+            bar_width = 78
+            bar_height = plot_height * value / y_max
+            svg.rect(
+                center - bar_width / 2,
+                bottom - bar_height,
+                bar_width,
+                bar_height,
+                fill=PREFETCH_COLORS[index],
+                rx=3,
+            )
+            svg.text(center, bottom - bar_height - 8, format_ns(value), size=11, weight="bold")
+            svg.text(center, bottom + 24, label, size=12, weight="bold")
+
+        if panel_index in (0, 2):
+            svg.text(left - 68, (top + bottom) / 2, "Batch latency", size=14, rotate=-90)
+
+    svg.text(
+        width / 2,
+        830,
+        "Lower is better. Bars are comparable within a panel; all prefetch variants include hint-generation overhead.",
+        size=13,
+        fill="#4B5563",
+    )
+    svg.write(path)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1323,7 +1548,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help=(
             "Benchmark result CSV (default: results/scenario_<scenario>.csv; "
-            "alignment uses results/bench_alignment.csv)"
+            "optimization experiments use results/bench_<scenario>.csv)"
         ),
     )
     parser.add_argument(
@@ -1338,8 +1563,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     default_name = (
-        "bench_alignment.csv"
-        if args.scenario == "alignment"
+        f"bench_{args.scenario}.csv"
+        if args.scenario in ("alignment", "prefetch")
         else f"scenario_{args.scenario}.csv"
     )
     input_path = args.input or Path("results") / default_name
@@ -1382,6 +1607,20 @@ def main() -> None:
         draw_alignment_latency_figure(rows, args.output_dir / names[0], "p50_ns")
         draw_alignment_latency_figure(rows, args.output_dir / names[1], "p99_ns")
         draw_alignment_model(args.output_dir / names[2])
+        for name in names:
+            print(args.output_dir / name)
+        return
+
+    if args.scenario == "prefetch":
+        rows = load_prefetch_rows(input_path)
+        names = (
+            "prefetch_latency_p50.svg",
+            "prefetch_latency_p99.svg",
+            "prefetch_workload_model.svg",
+        )
+        draw_prefetch_latency_figure(rows, args.output_dir / names[0], "p50_ns")
+        draw_prefetch_latency_figure(rows, args.output_dir / names[1], "p99_ns")
+        draw_prefetch_model(args.output_dir / names[2])
         for name in names:
             print(args.output_dir / name)
         return

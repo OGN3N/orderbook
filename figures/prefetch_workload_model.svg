@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="850" viewBox="0 0 1300 850">
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="650.00" y="40.00" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#111827" text-anchor="middle">Software-prefetch experiment</text>
+  <text x="650.00" y="66.00" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#374151" text-anchor="middle">Four timed batches using the x86 T0 high-temporal-locality hint</text>
+  <rect x="75.00" y="100.00" width="1150.00" height="155.00" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1" opacity="1" rx="8"/>
+  <rect x="75.00" y="280.00" width="1150.00" height="155.00" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1" opacity="1" rx="8"/>
+  <rect x="75.00" y="460.00" width="1150.00" height="155.00" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1" opacity="1" rx="8"/>
+  <rect x="75.00" y="640.00" width="1150.00" height="155.00" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1" opacity="1" rx="8"/>
+  <text x="100.00" y="128.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#111827" text-anchor="start">1. Sequential scan</text>
+  <text x="100.00" y="152.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">Read Vec::len for all 10,000 contiguous level headers</text>
+  <rect x="460.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="503.00" y="148.00" width="40.00" height="38.00" fill="#2563EB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="546.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="589.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="632.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="675.00" y="148.00" width="40.00" height="38.00" fill="#F97316" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="718.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="761.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="804.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="847.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="890.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="933.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="976.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="1019.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="1062.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="1105.00" y="148.00" width="40.00" height="38.00" fill="#D1D5DB" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="1148.00" y="148.00" width="40.00" height="38.00" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="524.50" y="212.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#1D4ED8" text-anchor="middle">current i</text>
+  <text x="696.50" y="232.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#C2410C" text-anchor="middle">hint i + 4</text>
+  <text x="1169.50" y="212.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#6D28D9" text-anchor="middle">hint i + 16</text>
+  <text x="100.00" y="308.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#111827" text-anchor="start">2. Known random access</text>
+  <text x="100.00" y="332.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">Read 10,000 pre-generated random level indices</text>
+  <rect x="470.00" y="328.00" width="165.00" height="62.00" fill="#FFFFFF" stroke="#2563EB" stroke-width="3" opacity="1" rx="6"/>
+  <text x="552.50" y="353.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#2563EB" text-anchor="middle">index i</text>
+  <text x="552.50" y="376.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">current header</text>
+  <rect x="735.00" y="328.00" width="165.00" height="62.00" fill="#FFFFFF" stroke="#F97316" stroke-width="3" opacity="1" rx="6"/>
+  <text x="817.50" y="353.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#F97316" text-anchor="middle">index i + 1</text>
+  <text x="817.50" y="376.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">near hint</text>
+  <rect x="1000.00" y="328.00" width="165.00" height="62.00" fill="#FFFFFF" stroke="#7C3AED" stroke-width="3" opacity="1" rx="6"/>
+  <text x="1082.50" y="353.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#7C3AED" text-anchor="middle">index i + 4</text>
+  <text x="1082.50" y="376.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">far hint</text>
+  <text x="682.00" y="367.00" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="normal" fill="#6B7280" text-anchor="middle">→</text>
+  <text x="947.00" y="367.00" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="normal" fill="#6B7280" text-anchor="middle">→</text>
+  <text x="817.00" y="415.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="middle">Future addresses are known from the index array.</text>
+  <text x="100.00" y="488.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#111827" text-anchor="start">3. Sparse pointer chase</text>
+  <text x="100.00" y="512.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">Scan 10,000 headers; 486 levels contain 1,465 heap orders</text>
+  <rect x="500.00" y="498.00" width="145.00" height="38.00" fill="#D1D5DB" stroke="#2563EB" stroke-width="2" opacity="1" rx="4"/>
+  <text x="572.50" y="523.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#111827" text-anchor="middle">level i</text>
+  <line x1="572.50" y1="536.00" x2="572.50" y2="561.00" stroke="#2563EB" stroke-width="2"/>
+  <rect x="517.00" y="561.00" width="111.00" height="34.00" fill="#A7F3D0" stroke="#2563EB" stroke-width="2" opacity="1" rx="4"/>
+  <text x="572.50" y="583.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#111827" text-anchor="middle">heap orders</text>
+  <rect x="740.00" y="498.00" width="145.00" height="38.00" fill="#D1D5DB" stroke="#F97316" stroke-width="2" opacity="1" rx="4"/>
+  <text x="812.50" y="523.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#111827" text-anchor="middle">level i + 2</text>
+  <line x1="812.50" y1="536.00" x2="812.50" y2="561.00" stroke="#F97316" stroke-width="2"/>
+  <rect x="757.00" y="561.00" width="111.00" height="34.00" fill="#A7F3D0" stroke="#F97316" stroke-width="2" opacity="1" rx="4"/>
+  <text x="812.50" y="583.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#111827" text-anchor="middle">heap orders</text>
+  <rect x="980.00" y="498.00" width="145.00" height="38.00" fill="#D1D5DB" stroke="#7C3AED" stroke-width="2" opacity="1" rx="4"/>
+  <text x="1052.50" y="523.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#111827" text-anchor="middle">level i + 8</text>
+  <line x1="1052.50" y1="536.00" x2="1052.50" y2="561.00" stroke="#7C3AED" stroke-width="2"/>
+  <rect x="997.00" y="561.00" width="111.00" height="34.00" fill="#A7F3D0" stroke="#7C3AED" stroke-width="2" opacity="1" rx="4"/>
+  <text x="1052.50" y="583.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#111827" text-anchor="middle">heap orders</text>
+  <text x="860.00" y="611.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="middle">Hints target heap data only when the future level is non-empty.</text>
+  <text x="100.00" y="668.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#111827" text-anchor="start">4. Simulated market sweep</text>
+  <text x="100.00" y="692.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">Consume 3 orders at each of 20 consecutive levels</text>
+  <rect x="455.00" y="685.00" width="470.00" height="48.00" fill="#D1D5DB" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <rect x="925.00" y="685.00" width="105.00" height="48.00" fill="#34D399" stroke="none" stroke-width="1" opacity="1" rx="0"/>
+  <rect x="1030.00" y="685.00" width="120.00" height="48.00" fill="#DDD6FE" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="690.00" y="715.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#374151" text-anchor="middle">indices 0–4,999: empty scan</text>
+  <text x="977.50" y="715.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">20 levels</text>
+  <text x="1090.00" y="715.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#111827" text-anchor="middle">50 noise draws</text>
+  <line x1="905.00" y1="753.00" x2="975.00" y2="753.00" stroke="#F97316" stroke-width="3"/>
+  <text x="940.00" y="777.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#C2410C" text-anchor="middle">look ahead at most four headers</text>
+  <rect x="310.00" y="812.00" width="18.00" height="18.00" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="2"/>
+  <text x="338.00" y="826.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#111827" text-anchor="start">current access</text>
+  <rect x="485.00" y="812.00" width="18.00" height="18.00" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="2"/>
+  <text x="513.00" y="826.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#111827" text-anchor="start">near prefetch</text>
+  <rect x="670.00" y="812.00" width="18.00" height="18.00" fill="#7C3AED" stroke="none" stroke-width="1" opacity="1" rx="2"/>
+  <text x="698.00" y="826.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#111827" text-anchor="start">far prefetch</text>
+  <text x="1010.00" y="826.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="middle">All hints use _MM_HINT_T0.</text>
+</svg>

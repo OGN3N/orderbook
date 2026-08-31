@@ -1,19 +1,21 @@
-/// Phase 5.3: Software Prefetching
+/// Phase 5.2: Software Prefetching
 ///
 /// Tests whether manual prefetch hints improve orderbook access patterns.
 /// Measures the effect of prefetching next price levels during array scans.
 ///
-/// Run with: cargo run --release --example bench_prefetch
+/// Run with: cargo run --release -- bench_prefetch
 ///
 /// NOTE: x86_64 only (uses _mm_prefetch intrinsics)
-use orderbook::perf::latency::LatencyTracker;
+use orderbook::analysis::{CsvExporter, ResultRow};
+use orderbook::perf::latency::{LatencyTracker, Percentiles};
 use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
 use std::collections::HashMap;
 
-const NUM_SAMPLES: usize = 1_000;
+const DEFAULT_NUM_SAMPLES: usize = 1_000;
+const SAMPLE_OVERRIDE_ENV: &str = "ORDERBOOK_PREFETCH_SAMPLES";
 
 // ============================================================================
 // Phase 5.2: Software Prefetching
@@ -22,29 +24,26 @@ const NUM_SAMPLES: usize = 1_000;
 // BACKGROUND: Cache Prefetching
 //
 // When the CPU accesses memory, it fetches an entire cache line (64 bytes).
-// If data isn't in cache, it stalls for ~100 cycles (L3) or ~200+ cycles (DRAM).
+// If data is not cached close to the core, the access can stall execution.
 //
 // HARDWARE PREFETCHER:
-//   The CPU automatically detects sequential and strided access patterns and
-//   prefetches ahead. This works great for linear scans but fails for:
-//   - Random access (no pattern to detect)
-//   - Pointer chasing (Vec<Order> heap data reached through Vec headers)
-//   - Irregular strides (scattered non-empty levels in sparse array)
+//   The CPU can detect some sequential and strided access patterns and fetch
+//   ahead. Random indices, pointer chasing, and irregular sparse strides are
+//   generally less predictable than linear traversal.
 //
 // SOFTWARE PREFETCH:
 //   We can manually issue prefetch instructions to bring data into cache
 //   before we need it. On x86:
-//     _mm_prefetch(ptr, _MM_HINT_T0)  → prefetch into L1 (tightest, ~4 cycle hint)
-//     _mm_prefetch(ptr, _MM_HINT_T1)  → prefetch into L2
-//     _mm_prefetch(ptr, _MM_HINT_T2)  → prefetch into L3
-//     _mm_prefetch(ptr, _MM_HINT_NTA) → prefetch non-temporal (bypass cache)
+//     _mm_prefetch(ptr, _MM_HINT_T0) supplies a high-temporal-locality hint.
+//   This experiment tests only _MM_HINT_T0. A prefetch is a hint: the CPU may
+//   handle it differently depending on its microarchitecture and cache state.
 //
 // ORDERBOOK ACCESS PATTERNS WHERE PREFETCH MIGHT HELP:
 //
 //   1. LEVEL SCAN (execute_market_order):
 //      The Fixed-Tick orderbook scans asks[0..10000] looking for non-empty levels.
 //      Each Level is a Vec header (24 bytes). The array is contiguous, so the HW
-//      prefetcher should handle this well. But: when we find a non-empty level,
+//      prefetcher may handle this well. But: when we find a non-empty level,
 //      we then chase the Vec's heap pointer to read actual orders — that's the
 //      unpredictable part.
 //
@@ -60,16 +59,13 @@ const NUM_SAMPLES: usize = 1_000;
 //      one could hide the pointer-chase latency.
 //
 // WHAT WE TEST:
-//   Test 1: Sequential scan — prefetch N levels ahead (HW should already do this)
+//   Test 1: Sequential scan — prefetch N level headers ahead
 //   Test 2: Random access — prefetch next random index while processing current
 //   Test 3: Pointer chase — prefetch Vec heap data of next level during scan
 //   Test 4: Market order simulation — prefetch next level's orders during matching
 //
-// EXPECTED RESULTS:
-//   - Sequential: no improvement (HW prefetcher dominates)
-//   - Random: possible improvement (HW can't predict random pattern)
-//   - Pointer chase: possible improvement (HW can't follow heap pointers)
-//   - Market order sim: possible improvement (heap data is the bottleneck)
+// Whether the hints help is an empirical question. Each prefetching loop also
+// executes extra address calculations, conditions, and instructions.
 // ============================================================================
 
 /// Simulates a Fixed-Tick Level (Vec header = 24 bytes)
@@ -97,10 +93,12 @@ struct Order {
 const ELEMENT_NUM: usize = 10_000;
 
 fn main() {
-    println!("=== Phase 5.3: Software Prefetching ===\n");
+    println!("=== Phase 5.2: Software Prefetching ===\n");
 
     let tsc_ghz = get_tsc_frequency();
     println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
+    let num_samples = sample_count();
+    println!("Samples per variant and operation: {}", num_samples);
 
     #[cfg(target_os = "linux")]
     {
@@ -130,17 +128,26 @@ fn main() {
 
     let seed: u64 = 42;
 
-    bench_sequential_scan(tsc_ghz);
-    bench_random_access(seed, tsc_ghz);
-    bench_pointer_chase(seed, tsc_ghz);
-    bench_market_order_sim(seed, tsc_ghz);
+    let sequential = bench_sequential_scan(tsc_ghz, num_samples);
+    let random = bench_random_access(seed, tsc_ghz, num_samples);
+    let pointer = bench_pointer_chase(seed, tsc_ghz, num_samples);
+    let market = bench_market_order_sim(seed, tsc_ghz, num_samples);
 
-    println!("\nInterpretation:");
-    println!("  - Sequential scan: HW prefetcher handles contiguous arrays well");
-    println!("  - Random access: SW prefetch helps if access pattern is known 1+ steps ahead");
-    println!("  - Pointer chase: SW prefetch helps hide heap-pointer latency");
-    println!("  - Market order: Combined effect — scan + pointer chase");
-    println!("  - 7800X3D 96MB V-Cache may reduce all benefits (everything fits in L3)");
+    export_csv(tsc_ghz, &sequential, &random, &pointer, &market);
+}
+
+fn sample_count() -> usize {
+    match std::env::var(SAMPLE_OVERRIDE_ENV) {
+        Ok(value) => value
+            .parse::<usize>()
+            .ok()
+            .filter(|&samples| samples > 0)
+            .unwrap_or_else(|| {
+                panic!("{SAMPLE_OVERRIDE_ENV} must be a positive integer, got {value:?}")
+            }),
+        Err(std::env::VarError::NotPresent) => DEFAULT_NUM_SAMPLES,
+        Err(error) => panic!("could not read {SAMPLE_OVERRIDE_ENV}: {error}"),
+    }
 }
 
 // ============================================================================
@@ -150,7 +157,7 @@ fn main() {
 // the is_empty() check in execute_market_order).
 // Compare: no prefetch vs prefetch N levels ahead.
 
-fn bench_sequential_scan(tsc_ghz: f64) {
+fn bench_sequential_scan(tsc_ghz: f64, num_samples: usize) -> [Percentiles; 3] {
     println!("--- Test 1: Sequential Level Scan ---");
     println!("(Scan all 10K levels, check is_empty — simulates market order walk)\n");
 
@@ -169,8 +176,8 @@ fn bench_sequential_scan(tsc_ghz: f64) {
     }
 
     // No prefetch
-    let mut tracker_none = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker_none = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         tracker_none.record(|| {
             let mut count = 0u64;
             for level in levels.iter() {
@@ -183,8 +190,8 @@ fn bench_sequential_scan(tsc_ghz: f64) {
     }
 
     // Prefetch 4 levels ahead
-    let mut tracker_pf4 = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker_pf4 = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         tracker_pf4.record(|| {
             let mut count = 0u64;
             for i in 0..ELEMENT_NUM {
@@ -205,8 +212,8 @@ fn bench_sequential_scan(tsc_ghz: f64) {
     }
 
     // Prefetch 16 levels ahead
-    let mut tracker_pf16 = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker_pf16 = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         tracker_pf16.record(|| {
             let mut count = 0u64;
             for i in 0..ELEMENT_NUM {
@@ -229,30 +236,31 @@ fn bench_sequential_scan(tsc_ghz: f64) {
     let p_pf4 = tracker_pf4.precentiles().unwrap();
     let p_pf16 = tracker_pf16.precentiles().unwrap();
 
-    println!("{:<20} | {:>14} | {:>8}", "Variant", "p50", "vs None");
+    println!("{:<20} | {:>14} | {:>12}", "Variant", "p50", "Latency/None");
     println!("{:-<50}", "");
     println!(
-        "{:<20} | {:>8} cy {:>3.0}ns | {:>6}",
+        "{:<20} | {:>8} TSC {:>5.1}ns | {:>6}",
         "No prefetch",
         p_none.p50,
         tsc_ticks_to_ns(p_none.p50, tsc_ghz),
         "—"
     );
     println!(
-        "{:<20} | {:>8} cy {:>3.0}ns | {:>5.2}x",
+        "{:<20} | {:>8} TSC {:>5.1}ns | {:>5.2}x",
         "Prefetch +4",
         p_pf4.p50,
         tsc_ticks_to_ns(p_pf4.p50, tsc_ghz),
-        p_none.p50 as f64 / p_pf4.p50.max(1) as f64,
+        p_pf4.p50 as f64 / p_none.p50.max(1) as f64,
     );
     println!(
-        "{:<20} | {:>8} cy {:>3.0}ns | {:>5.2}x",
+        "{:<20} | {:>8} TSC {:>5.1}ns | {:>5.2}x",
         "Prefetch +16",
         p_pf16.p50,
         tsc_ticks_to_ns(p_pf16.p50, tsc_ghz),
-        p_none.p50 as f64 / p_pf16.p50.max(1) as f64,
+        p_pf16.p50 as f64 / p_none.p50.max(1) as f64,
     );
     println!();
+    [p_none, p_pf4, p_pf16]
 }
 
 // ============================================================================
@@ -261,7 +269,7 @@ fn bench_sequential_scan(tsc_ghz: f64) {
 // Access levels at random indices (simulates random add_order / depth_at_price).
 // We know the sequence ahead of time, so we can prefetch the next index.
 
-fn bench_random_access(seed: u64, tsc_ghz: f64) {
+fn bench_random_access(seed: u64, tsc_ghz: f64, num_samples: usize) -> [Percentiles; 3] {
     println!("--- Test 2: Random Price Lookup ---");
     println!("(Access levels at random indices, prefetch next while processing current)\n");
 
@@ -284,8 +292,8 @@ fn bench_random_access(seed: u64, tsc_ghz: f64) {
         .collect();
 
     // No prefetch
-    let mut tracker_none = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker_none = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         tracker_none.record(|| {
             let mut sum = 0u64;
             for &idx in &indices {
@@ -296,8 +304,8 @@ fn bench_random_access(seed: u64, tsc_ghz: f64) {
     }
 
     // Prefetch next index
-    let mut tracker_pf1 = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker_pf1 = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         tracker_pf1.record(|| {
             let mut sum = 0u64;
             for i in 0..indices.len() {
@@ -316,8 +324,8 @@ fn bench_random_access(seed: u64, tsc_ghz: f64) {
     }
 
     // Prefetch 4 ahead
-    let mut tracker_pf4 = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker_pf4 = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         tracker_pf4.record(|| {
             let mut sum = 0u64;
             for i in 0..indices.len() {
@@ -338,30 +346,31 @@ fn bench_random_access(seed: u64, tsc_ghz: f64) {
     let p_pf1 = tracker_pf1.precentiles().unwrap();
     let p_pf4 = tracker_pf4.precentiles().unwrap();
 
-    println!("{:<20} | {:>14} | {:>8}", "Variant", "p50", "vs None");
+    println!("{:<20} | {:>14} | {:>12}", "Variant", "p50", "Latency/None");
     println!("{:-<50}", "");
     println!(
-        "{:<20} | {:>8} cy {:>3.0}ns | {:>6}",
+        "{:<20} | {:>8} TSC {:>5.1}ns | {:>6}",
         "No prefetch",
         p_none.p50,
         tsc_ticks_to_ns(p_none.p50, tsc_ghz),
         "—"
     );
     println!(
-        "{:<20} | {:>8} cy {:>3.0}ns | {:>5.2}x",
+        "{:<20} | {:>8} TSC {:>5.1}ns | {:>5.2}x",
         "Prefetch +1",
         p_pf1.p50,
         tsc_ticks_to_ns(p_pf1.p50, tsc_ghz),
-        p_none.p50 as f64 / p_pf1.p50.max(1) as f64,
+        p_pf1.p50 as f64 / p_none.p50.max(1) as f64,
     );
     println!(
-        "{:<20} | {:>8} cy {:>3.0}ns | {:>5.2}x",
+        "{:<20} | {:>8} TSC {:>5.1}ns | {:>5.2}x",
         "Prefetch +4",
         p_pf4.p50,
         tsc_ticks_to_ns(p_pf4.p50, tsc_ghz),
-        p_none.p50 as f64 / p_pf4.p50.max(1) as f64,
+        p_pf4.p50 as f64 / p_none.p50.max(1) as f64,
     );
     println!();
+    [p_none, p_pf1, p_pf4]
 }
 
 // ============================================================================
@@ -370,12 +379,13 @@ fn bench_random_access(seed: u64, tsc_ghz: f64) {
 // This is the most realistic orderbook scenario:
 // We scan the level array (contiguous), but to read order data we must
 // follow each Level's Vec pointer to heap-allocated Order data.
-// The heap allocations are scattered — HW prefetcher can't predict them.
+// The heap allocations are separate from the contiguous header array, so their
+// addresses do not form the same simple header stride.
 //
 // Strategy: When processing level[i]'s orders, prefetch level[i+1]'s
 // heap data (the pointer stored in the Vec header).
 
-fn bench_pointer_chase(seed: u64, tsc_ghz: f64) {
+fn bench_pointer_chase(seed: u64, tsc_ghz: f64, num_samples: usize) -> [Percentiles; 3] {
     println!("--- Test 3: Pointer Chase (Vec header → heap orders) ---");
     println!("(Scan levels, read order quantities — prefetch next level's heap data)\n");
 
@@ -401,10 +411,16 @@ fn bench_pointer_chase(seed: u64, tsc_ghz: f64) {
     }
     populated_indices.sort();
     populated_indices.dedup();
+    let populated_levels = populated_indices.len();
+    let total_orders: usize = levels.iter().map(|level| level.orders.len()).sum();
+    println!(
+        "Populated levels: {}; heap orders read per scan: {}",
+        populated_levels, total_orders
+    );
 
     // No prefetch: scan and sum quantities
-    let mut tracker_none = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker_none = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         tracker_none.record(|| {
             let mut total_qty = 0u64;
             for level in levels.iter() {
@@ -417,8 +433,8 @@ fn bench_pointer_chase(seed: u64, tsc_ghz: f64) {
     }
 
     // Prefetch next level's orders Vec data pointer
-    let mut tracker_pf = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker_pf = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         tracker_pf.record(|| {
             let mut total_qty = 0u64;
             for i in 0..ELEMENT_NUM {
@@ -441,8 +457,8 @@ fn bench_pointer_chase(seed: u64, tsc_ghz: f64) {
     }
 
     // Prefetch with larger distance (8 ahead)
-    let mut tracker_pf8 = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker_pf8 = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         tracker_pf8.record(|| {
             let mut total_qty = 0u64;
             for i in 0..ELEMENT_NUM {
@@ -465,30 +481,31 @@ fn bench_pointer_chase(seed: u64, tsc_ghz: f64) {
     let p_pf = tracker_pf.precentiles().unwrap();
     let p_pf8 = tracker_pf8.precentiles().unwrap();
 
-    println!("{:<25} | {:>14} | {:>8}", "Variant", "p50", "vs None");
+    println!("{:<25} | {:>14} | {:>12}", "Variant", "p50", "Latency/None");
     println!("{:-<55}", "");
     println!(
-        "{:<25} | {:>8} cy {:>3.0}ns | {:>6}",
+        "{:<25} | {:>8} TSC {:>5.1}ns | {:>6}",
         "No prefetch",
         p_none.p50,
         tsc_ticks_to_ns(p_none.p50, tsc_ghz),
         "—"
     );
     println!(
-        "{:<25} | {:>8} cy {:>3.0}ns | {:>5.2}x",
+        "{:<25} | {:>8} TSC {:>5.1}ns | {:>5.2}x",
         "Prefetch heap +2",
         p_pf.p50,
         tsc_ticks_to_ns(p_pf.p50, tsc_ghz),
-        p_none.p50 as f64 / p_pf.p50.max(1) as f64,
+        p_pf.p50 as f64 / p_none.p50.max(1) as f64,
     );
     println!(
-        "{:<25} | {:>8} cy {:>3.0}ns | {:>5.2}x",
+        "{:<25} | {:>8} TSC {:>5.1}ns | {:>5.2}x",
         "Prefetch heap +8",
         p_pf8.p50,
         tsc_ticks_to_ns(p_pf8.p50, tsc_ghz),
-        p_none.p50 as f64 / p_pf8.p50.max(1) as f64,
+        p_pf8.p50 as f64 / p_none.p50.max(1) as f64,
     );
     println!();
+    [p_none, p_pf, p_pf8]
 }
 
 // ============================================================================
@@ -502,7 +519,7 @@ fn bench_pointer_chase(seed: u64, tsc_ghz: f64) {
 //   A) Prefetch the next level's Vec header (array is contiguous — probably useless)
 //   B) Prefetch the next non-empty level's order data (heap pointer — possibly useful)
 
-fn bench_market_order_sim(seed: u64, tsc_ghz: f64) {
+fn bench_market_order_sim(seed: u64, tsc_ghz: f64, num_samples: usize) -> [Percentiles; 2] {
     println!("--- Test 4: Market Order Sweep (full simulation) ---");
     println!("(Sweep 20 levels, consume orders — prefetch next level's heap orders)\n");
 
@@ -510,8 +527,8 @@ fn bench_market_order_sim(seed: u64, tsc_ghz: f64) {
     let orders_per_level = 3;
 
     // No prefetch
-    let mut tracker_none = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker_none = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         let (mut levels, mut order_index) = build_sparse_book(seed, sweep_levels, orders_per_level);
         tracker_none.record(|| {
             let target_qty = (sweep_levels * orders_per_level * 100) as u64;
@@ -521,8 +538,8 @@ fn bench_market_order_sim(seed: u64, tsc_ghz: f64) {
     }
 
     // Prefetch next level's heap data
-    let mut tracker_pf = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker_pf = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         let (mut levels, mut order_index) = build_sparse_book(seed, sweep_levels, orders_per_level);
         tracker_pf.record(|| {
             let target_qty = (sweep_levels * orders_per_level * 100) as u64;
@@ -534,23 +551,24 @@ fn bench_market_order_sim(seed: u64, tsc_ghz: f64) {
     let p_none = tracker_none.precentiles().unwrap();
     let p_pf = tracker_pf.precentiles().unwrap();
 
-    println!("{:<25} | {:>14} | {:>8}", "Variant", "p50", "vs None");
+    println!("{:<25} | {:>14} | {:>12}", "Variant", "p50", "Latency/None");
     println!("{:-<55}", "");
     println!(
-        "{:<25} | {:>8} cy {:>3.0}ns | {:>6}",
+        "{:<25} | {:>8} TSC {:>5.1}ns | {:>6}",
         "No prefetch",
         p_none.p50,
         tsc_ticks_to_ns(p_none.p50, tsc_ghz),
         "—"
     );
     println!(
-        "{:<25} | {:>8} cy {:>3.0}ns | {:>5.2}x",
+        "{:<25} | {:>8} TSC {:>5.1}ns | {:>5.2}x",
         "Prefetch heap ahead",
         p_pf.p50,
         tsc_ticks_to_ns(p_pf.p50, tsc_ghz),
-        p_none.p50 as f64 / p_pf.p50.max(1) as f64,
+        p_pf.p50 as f64 / p_none.p50.max(1) as f64,
     );
     println!();
+    [p_none, p_pf]
 }
 
 // ---- Helpers for Test 4 ----
@@ -694,4 +712,61 @@ fn execute_with_prefetch(
     }
 
     fills
+}
+
+fn export_csv(
+    tsc_ghz: f64,
+    sequential: &[Percentiles; 3],
+    random: &[Percentiles; 3],
+    pointer: &[Percentiles; 3],
+    market: &[Percentiles; 2],
+) {
+    let mut csv = CsvExporter::create("bench_prefetch").expect("failed to create prefetch CSV");
+    let result_groups = [
+        (
+            "sequential_scan_10000_levels",
+            vec![
+                ("no_prefetch", &sequential[0]),
+                ("prefetch_header_plus_4", &sequential[1]),
+                ("prefetch_header_plus_16", &sequential[2]),
+            ],
+        ),
+        (
+            "random_access_10000_reads",
+            vec![
+                ("no_prefetch", &random[0]),
+                ("prefetch_header_plus_1", &random[1]),
+                ("prefetch_header_plus_4", &random[2]),
+            ],
+        ),
+        (
+            "pointer_chase_10000_levels",
+            vec![
+                ("no_prefetch", &pointer[0]),
+                ("prefetch_heap_plus_2", &pointer[1]),
+                ("prefetch_heap_plus_8", &pointer[2]),
+            ],
+        ),
+        (
+            "market_sweep_20_levels_60_orders",
+            vec![
+                ("no_prefetch", &market[0]),
+                ("prefetch_heap_window_4", &market[1]),
+            ],
+        ),
+    ];
+
+    for (operation, results) in result_groups {
+        for (implementation, percentiles) in results {
+            csv.append(&ResultRow {
+                scenario: "bench_prefetch",
+                implementation,
+                operation,
+                tsc_ghz,
+                percentiles,
+            })
+            .expect("failed to append prefetch CSV row");
+        }
+    }
+    csv.flush().expect("failed to flush prefetch CSV");
 }

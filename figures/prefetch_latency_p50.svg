@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="860" viewBox="0 0 1500 860">
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="750.00" y="40.00" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#111827" text-anchor="middle">Software-prefetch median batch latency</text>
+  <text x="750.00" y="66.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">1,000 samples per bar; each panel has its own scale and batch definition</text>
+  <text x="385.00" y="97.00" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#111827" text-anchor="middle">Sequential level scan</text>
+  <text x="385.00" y="118.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">Timed batch: 10,000 header checks</text>
+  <line x1="95.00" y1="375.00" x2="675.00" y2="375.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="85.00" y="380.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">0.0 ns</text>
+  <line x1="95.00" y1="328.00" x2="675.00" y2="328.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="85.00" y="333.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">1.00 μs</text>
+  <line x1="95.00" y1="281.00" x2="675.00" y2="281.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="85.00" y="286.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">2.00 μs</text>
+  <line x1="95.00" y1="234.00" x2="675.00" y2="234.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="85.00" y="239.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">3.00 μs</text>
+  <line x1="95.00" y1="187.00" x2="675.00" y2="187.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="85.00" y="192.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">4.00 μs</text>
+  <line x1="95.00" y1="140.00" x2="675.00" y2="140.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="85.00" y="145.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">5.00 μs</text>
+  <line x1="95.00" y1="140.00" x2="95.00" y2="375.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="95.00" y1="375.00" x2="675.00" y2="375.00" stroke="#374151" stroke-width="1.5"/>
+  <rect x="201.00" y="277.05" width="78.00" height="97.95" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="240.00" y="269.05" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">2.08 μs</text>
+  <text x="240.00" y="399.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">None</text>
+  <rect x="346.00" y="225.73" width="78.00" height="149.27" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="385.00" y="217.73" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">3.18 μs</text>
+  <text x="385.00" y="399.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Header +4</text>
+  <rect x="491.00" y="229.02" width="78.00" height="145.98" fill="#7C3AED" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="530.00" y="221.02" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">3.11 μs</text>
+  <text x="530.00" y="399.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Header +16</text>
+  <text x="27.00" y="257.50" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#111827" text-anchor="middle" transform="rotate(-90.0 27.00 257.50)">Batch latency</text>
+  <text x="1115.00" y="97.00" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#111827" text-anchor="middle">Known random access</text>
+  <text x="1115.00" y="118.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">Timed batch: 10,000 header reads</text>
+  <line x1="825.00" y1="375.00" x2="1405.00" y2="375.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="815.00" y="380.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">0.0 ns</text>
+  <line x1="825.00" y1="328.00" x2="1405.00" y2="328.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="815.00" y="333.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">2.00 μs</text>
+  <line x1="825.00" y1="281.00" x2="1405.00" y2="281.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="815.00" y="286.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">4.00 μs</text>
+  <line x1="825.00" y1="234.00" x2="1405.00" y2="234.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="815.00" y="239.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">6.00 μs</text>
+  <line x1="825.00" y1="187.00" x2="1405.00" y2="187.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="815.00" y="192.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">8.00 μs</text>
+  <line x1="825.00" y1="140.00" x2="1405.00" y2="140.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="815.00" y="145.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">10.00 μs</text>
+  <line x1="825.00" y1="140.00" x2="825.00" y2="375.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="825.00" y1="375.00" x2="1405.00" y2="375.00" stroke="#374151" stroke-width="1.5"/>
+  <rect x="931.00" y="274.23" width="78.00" height="100.77" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="970.00" y="266.23" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">4.29 μs</text>
+  <text x="970.00" y="399.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">None</text>
+  <rect x="1076.00" y="220.31" width="78.00" height="154.69" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="1115.00" y="212.31" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">6.58 μs</text>
+  <text x="1115.00" y="399.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Header +1</text>
+  <rect x="1221.00" y="186.88" width="78.00" height="188.12" fill="#7C3AED" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="1260.00" y="178.88" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">8.01 μs</text>
+  <text x="1260.00" y="399.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Header +4</text>
+  <text x="385.00" y="457.00" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#111827" text-anchor="middle">Sparse pointer chase</text>
+  <text x="385.00" y="478.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">Timed batch: 10,000 headers + 1,465 orders</text>
+  <line x1="95.00" y1="735.00" x2="675.00" y2="735.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="85.00" y="740.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">0.0 ns</text>
+  <line x1="95.00" y1="688.00" x2="675.00" y2="688.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="85.00" y="693.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">2.00 μs</text>
+  <line x1="95.00" y1="641.00" x2="675.00" y2="641.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="85.00" y="646.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">4.00 μs</text>
+  <line x1="95.00" y1="594.00" x2="675.00" y2="594.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="85.00" y="599.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">6.00 μs</text>
+  <line x1="95.00" y1="547.00" x2="675.00" y2="547.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="85.00" y="552.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">8.00 μs</text>
+  <line x1="95.00" y1="500.00" x2="675.00" y2="500.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="85.00" y="505.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">10.00 μs</text>
+  <line x1="95.00" y1="500.00" x2="95.00" y2="735.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="95.00" y1="735.00" x2="675.00" y2="735.00" stroke="#374151" stroke-width="1.5"/>
+  <rect x="201.00" y="648.36" width="78.00" height="86.64" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="240.00" y="640.36" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">3.69 μs</text>
+  <text x="240.00" y="759.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">None</text>
+  <rect x="346.00" y="541.70" width="78.00" height="193.30" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="385.00" y="533.70" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">8.23 μs</text>
+  <text x="385.00" y="759.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Heap +2</text>
+  <rect x="491.00" y="579.84" width="78.00" height="155.16" fill="#7C3AED" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="530.00" y="571.84" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">6.60 μs</text>
+  <text x="530.00" y="759.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Heap +8</text>
+  <text x="27.00" y="617.50" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#111827" text-anchor="middle" transform="rotate(-90.0 27.00 617.50)">Batch latency</text>
+  <text x="1115.00" y="457.00" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#111827" text-anchor="middle">Simulated market sweep</text>
+  <text x="1115.00" y="478.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">Timed batch: scan to 5,000; consume 60 orders</text>
+  <line x1="825.00" y1="735.00" x2="1405.00" y2="735.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="815.00" y="740.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">0.0 ns</text>
+  <line x1="825.00" y1="688.00" x2="1405.00" y2="688.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="815.00" y="693.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">3.00 μs</text>
+  <line x1="825.00" y1="641.00" x2="1405.00" y2="641.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="815.00" y="646.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">6.00 μs</text>
+  <line x1="825.00" y1="594.00" x2="1405.00" y2="594.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="815.00" y="599.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">9.00 μs</text>
+  <line x1="825.00" y1="547.00" x2="1405.00" y2="547.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="815.00" y="552.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">12.00 μs</text>
+  <line x1="825.00" y1="500.00" x2="1405.00" y2="500.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="815.00" y="505.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">15.00 μs</text>
+  <line x1="825.00" y1="500.00" x2="825.00" y2="735.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="825.00" y1="735.00" x2="1405.00" y2="735.00" stroke="#374151" stroke-width="1.5"/>
+  <rect x="979.33" y="692.46" width="78.00" height="42.54" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="1018.33" y="684.46" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">2.72 μs</text>
+  <text x="1018.33" y="759.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">None</text>
+  <rect x="1172.67" y="582.27" width="78.00" height="152.73" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="1211.67" y="574.27" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">9.75 μs</text>
+  <text x="1211.67" y="759.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Heap ≤4</text>
+  <text x="750.00" y="830.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">Lower is better. Bars are comparable within a panel; all prefetch variants include hint-generation overhead.</text>
+</svg>
