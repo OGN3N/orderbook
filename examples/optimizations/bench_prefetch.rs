@@ -16,7 +16,7 @@ use std::collections::HashMap;
 const NUM_SAMPLES: usize = 1_000;
 
 // ============================================================================
-// Phase 5.3: Software Prefetching
+// Phase 5.2: Software Prefetching
 // ============================================================================
 //
 // BACKGROUND: Cache Prefetching

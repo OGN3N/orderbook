@@ -11,7 +11,8 @@
 /// - Insert performance (push to Vec)
 ///
 /// Run with: cargo run --release --example bench_alignment
-use orderbook::perf::latency::LatencyTracker;
+use orderbook::analysis::{CsvExporter, ResultRow};
+use orderbook::perf::latency::{LatencyTracker, Percentiles};
 use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use rand::SeedableRng;
 use rand::prelude::*;
@@ -19,7 +20,8 @@ use rand::rngs::StdRng;
 
 const NUM_ORDERS: usize = 10_000;
 const NUM_ORDERS_RANDOM: usize = 500_000; // spills out of L2 (~1MB), into V-Cache
-const NUM_SAMPLES: usize = 1_000;
+const DEFAULT_NUM_SAMPLES: usize = 1_000;
+const SAMPLE_OVERRIDE_ENV: &str = "ORDERBOOK_ALIGNMENT_SAMPLES";
 const RANDOM_BATCH: usize = 64; // accesses per sample — amortises RDTSC overhead
 
 // ============================================================================
@@ -33,7 +35,7 @@ const RANDOM_BATCH: usize = 64; // accesses per sample — amortises RDTSC overh
 // 1. NATURAL ALIGNMENT (Default):
 //    Rust aligns structs to their largest field. Our Order has u64 (8 bytes),
 //    so it aligns to 8-byte boundaries. Size: 24 bytes.
-//    Layout: [id:8][side:1][pad:3][price:4][qty:4] = 24 bytes
+//    Rust may reorder fields in repr(Rust); the observed total is 24 bytes.
 //
 //    Cache line packing: 64 / 24 = 2.6 orders per line
 //    Some orders STRADDLE two cache lines (split access).
@@ -45,10 +47,10 @@ const RANDOM_BATCH: usize = 64; // accesses per sample — amortises RDTSC overh
 //    Layout: [id:8][side:1][price:4][qty:4] = 17 bytes
 //
 //    Cache line packing: 64 / 17 = 3.7 orders per line
-//    MORE orders fit in cache (42% more than default).
-//    But fields may be UNALIGNED: reading a u64 that doesn't start on an
-//    8-byte boundary causes an unaligned access penalty.
-//    On x86: works but slower. On ARM: may fault.
+//    MORE orders fit in the same byte range (about 41% more than default).
+//    But fields may be UNALIGNED and cannot be accessed through ordinary
+//    aligned Rust references.
+//    Packed quantities are therefore read with ptr::read_unaligned.
 //
 // 3. CACHE-LINE ALIGNED (64 bytes):
 //    #[repr(C, align(64))] pads each order to exactly 64 bytes.
@@ -59,7 +61,7 @@ const RANDOM_BATCH: usize = 64; // accesses per sample — amortises RDTSC overh
 //    Good for: multi-threaded access (no false sharing)
 //    Bad for: sequential scan (fewer orders in cache)
 //
-// FALSE SHARING:
+// FALSE SHARING (NOT MEASURED BY THIS SINGLE-THREADED EXPERIMENT):
 // When two threads modify data on the SAME cache line, the line "bounces"
 // between cores (MESI protocol). Cache-line alignment eliminates this
 // by ensuring each order lives on its own line.
@@ -77,7 +79,7 @@ const RANDOM_BATCH: usize = 64; // accesses per sample — amortises RDTSC overh
 #[derive(Clone, Copy)]
 struct OrderDefault {
     id: u64,       // 8 bytes
-    side: u8,      // 1 byte + 3 bytes padding
+    side: u8,      // 1 byte
     price: u32,    // 4 bytes
     quantity: u32, // 4 bytes
 }
@@ -113,6 +115,8 @@ fn main() {
 
     let tsc_ghz = get_tsc_frequency();
     println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
+    let num_samples = sample_count();
+    println!("Samples per layout and operation: {}", num_samples);
 
     #[cfg(target_os = "linux")]
     {
@@ -188,8 +192,9 @@ fn main() {
         std::mem::align_of::<OrderDefault>(),
         NUM_ORDERS,
     );
+    println!("\nTheoretical straddles with a cache-line-aligned Vec base:");
     println!(
-        "\nCache line straddles (Default): {}/{} orders ({:.1}%)",
+        "Cache line straddles (Default): {}/{} orders ({:.1}%)",
         straddle_count,
         NUM_ORDERS,
         straddle_count as f64 / NUM_ORDERS as f64 * 100.0
@@ -214,11 +219,11 @@ fn main() {
 
     // Run benchmarks
     println!("\n--- Sequential Scan: sum all quantities ---");
-    println!("(Tests cache line utilization during linear traversal)\n");
+    println!("(Compares repeated linear traversal across record layouts)\n");
 
-    let default_seq = bench_sequential_default(seed);
-    let packed_seq = bench_sequential_packed(seed);
-    let aligned_seq = bench_sequential_aligned(seed);
+    let default_seq = bench_sequential_default(seed, num_samples);
+    let packed_seq = bench_sequential_packed(seed, num_samples);
+    let aligned_seq = bench_sequential_aligned(seed, num_samples);
     print_bench_comparison(
         "Sequential",
         &default_seq,
@@ -232,13 +237,13 @@ fn main() {
         RANDOM_BATCH, NUM_ORDERS_RANDOM
     );
     println!(
-        "(Tests cache miss behavior per layout — time is per batch of {} accesses)\n",
+        "(Time is per batch of {} indexed quantity reads)\n",
         RANDOM_BATCH
     );
 
-    let default_rnd = bench_random_access_default(seed);
-    let packed_rnd = bench_random_access_packed(seed);
-    let aligned_rnd = bench_random_access_aligned(seed);
+    let default_rnd = bench_random_access_default(seed, num_samples);
+    let packed_rnd = bench_random_access_packed(seed, num_samples);
+    let aligned_rnd = bench_random_access_aligned(seed, num_samples);
     print_bench_comparison(
         "Random Access",
         &default_rnd,
@@ -252,13 +257,13 @@ fn main() {
         NUM_ORDERS
     );
     println!(
-        "(Tests allocation cost per layout — time is per full insert of {} orders)\n",
+        "(Time includes allocation, copying, reallocation, and destruction for {} orders)\n",
         NUM_ORDERS
     );
 
-    let default_ins = bench_insert_default(seed);
-    let packed_ins = bench_insert_packed(seed);
-    let aligned_ins = bench_insert_aligned(seed);
+    let default_ins = bench_insert_default(seed, num_samples);
+    let packed_ins = bench_insert_packed(seed, num_samples);
+    let aligned_ins = bench_insert_aligned(seed, num_samples);
     print_bench_comparison("Insert", &default_ins, &packed_ins, &aligned_ins, tsc_ghz);
 
     println!("\n--- Summary ---");
@@ -274,6 +279,33 @@ fn main() {
         &aligned_ins,
         tsc_ghz,
     );
+
+    export_csv(
+        tsc_ghz,
+        &default_seq,
+        &packed_seq,
+        &aligned_seq,
+        &default_rnd,
+        &packed_rnd,
+        &aligned_rnd,
+        &default_ins,
+        &packed_ins,
+        &aligned_ins,
+    );
+}
+
+fn sample_count() -> usize {
+    match std::env::var(SAMPLE_OVERRIDE_ENV) {
+        Ok(value) => value
+            .parse::<usize>()
+            .ok()
+            .filter(|&samples| samples > 0)
+            .unwrap_or_else(|| {
+                panic!("{SAMPLE_OVERRIDE_ENV} must be a positive integer, got {value:?}")
+            }),
+        Err(std::env::VarError::NotPresent) => DEFAULT_NUM_SAMPLES,
+        Err(error) => panic!("could not read {SAMPLE_OVERRIDE_ENV}: {error}"),
+    }
 }
 
 /// Count how many orders straddle a cache line boundary
@@ -292,20 +324,16 @@ fn count_straddles(struct_size: usize, _struct_align: usize, count: usize) -> us
     straddles
 }
 
-struct BenchResult {
-    p50: u64,
-    p99: u64,
-    max: u64,
-}
+type BenchResult = Percentiles;
 
 // ============================================================================
 // Sequential Scan Benchmarks
 // Iterate over all orders in a Vec, summing quantities.
 // This is the most cache-friendly access pattern.
-// Packed should win: more orders per cache line = fewer cache misses.
+// Compares the effect of record density during linear traversal.
 // ============================================================================
 
-fn bench_sequential_default(seed: u64) -> BenchResult {
+fn bench_sequential_default(seed: u64, num_samples: usize) -> BenchResult {
     let mut rng = StdRng::seed_from_u64(seed);
     let orders: Vec<OrderDefault> = (0..NUM_ORDERS)
         .map(|i| OrderDefault {
@@ -316,8 +344,8 @@ fn bench_sequential_default(seed: u64) -> BenchResult {
         })
         .collect();
 
-    let mut tracker = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         tracker.record(|| {
             let mut sum = 0u64;
             for order in &orders {
@@ -327,15 +355,10 @@ fn bench_sequential_default(seed: u64) -> BenchResult {
         });
     }
 
-    let p = tracker.precentiles().expect("No samples");
-    BenchResult {
-        p50: p.p50,
-        p99: p.p99,
-        max: p.max,
-    }
+    tracker.precentiles().expect("No samples")
 }
 
-fn bench_sequential_packed(seed: u64) -> BenchResult {
+fn bench_sequential_packed(seed: u64, num_samples: usize) -> BenchResult {
     let mut rng = StdRng::seed_from_u64(seed);
     let orders: Vec<OrderPacked> = (0..NUM_ORDERS)
         .map(|i| OrderPacked {
@@ -346,8 +369,8 @@ fn bench_sequential_packed(seed: u64) -> BenchResult {
         })
         .collect();
 
-    let mut tracker = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         tracker.record(|| {
             let mut sum = 0u64;
             for order in &orders {
@@ -359,15 +382,10 @@ fn bench_sequential_packed(seed: u64) -> BenchResult {
         });
     }
 
-    let p = tracker.precentiles().expect("No samples");
-    BenchResult {
-        p50: p.p50,
-        p99: p.p99,
-        max: p.max,
-    }
+    tracker.precentiles().expect("No samples")
 }
 
-fn bench_sequential_aligned(seed: u64) -> BenchResult {
+fn bench_sequential_aligned(seed: u64, num_samples: usize) -> BenchResult {
     let mut rng = StdRng::seed_from_u64(seed);
     let orders: Vec<OrderAligned64> = (0..NUM_ORDERS)
         .map(|i| OrderAligned64 {
@@ -378,8 +396,8 @@ fn bench_sequential_aligned(seed: u64) -> BenchResult {
         })
         .collect();
 
-    let mut tracker = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         tracker.record(|| {
             let mut sum = 0u64;
             for order in &orders {
@@ -389,21 +407,15 @@ fn bench_sequential_aligned(seed: u64) -> BenchResult {
         });
     }
 
-    let p = tracker.precentiles().expect("No samples");
-    BenchResult {
-        p50: p.p50,
-        p99: p.p99,
-        max: p.max,
-    }
+    tracker.precentiles().expect("No samples")
 }
 
 // ============================================================================
 // Random Access Benchmarks
-// Access orders at random indices. This defeats cache prefetching.
-// Aligned should show more consistent latency (no straddles).
+// Access orders at random indices to reduce predictable spatial traversal.
 // ============================================================================
 
-fn bench_random_access_default(seed: u64) -> BenchResult {
+fn bench_random_access_default(seed: u64, num_samples: usize) -> BenchResult {
     let mut rng = StdRng::seed_from_u64(seed);
     let orders: Vec<OrderDefault> = (0..NUM_ORDERS_RANDOM)
         .map(|i| OrderDefault {
@@ -414,12 +426,12 @@ fn bench_random_access_default(seed: u64) -> BenchResult {
         })
         .collect();
 
-    // NUM_SAMPLES batches of RANDOM_BATCH accesses each — amortises RDTSC overhead
-    let indices: Vec<usize> = (0..NUM_SAMPLES * RANDOM_BATCH)
+    // Batches of RANDOM_BATCH accesses amortise the timestamp overhead.
+    let indices: Vec<usize> = (0..num_samples * RANDOM_BATCH)
         .map(|_| rng.random_range(0..NUM_ORDERS_RANDOM))
         .collect();
 
-    let mut tracker = LatencyTracker::new(NUM_SAMPLES);
+    let mut tracker = LatencyTracker::new(num_samples);
     for chunk in indices.chunks(RANDOM_BATCH) {
         tracker.record(|| {
             for &idx in chunk {
@@ -429,15 +441,10 @@ fn bench_random_access_default(seed: u64) -> BenchResult {
         });
     }
 
-    let p = tracker.precentiles().expect("No samples");
-    BenchResult {
-        p50: p.p50,
-        p99: p.p99,
-        max: p.max,
-    }
+    tracker.precentiles().expect("No samples")
 }
 
-fn bench_random_access_packed(seed: u64) -> BenchResult {
+fn bench_random_access_packed(seed: u64, num_samples: usize) -> BenchResult {
     let mut rng = StdRng::seed_from_u64(seed);
     let orders: Vec<OrderPacked> = (0..NUM_ORDERS_RANDOM)
         .map(|i| OrderPacked {
@@ -448,11 +455,11 @@ fn bench_random_access_packed(seed: u64) -> BenchResult {
         })
         .collect();
 
-    let indices: Vec<usize> = (0..NUM_SAMPLES * RANDOM_BATCH)
+    let indices: Vec<usize> = (0..num_samples * RANDOM_BATCH)
         .map(|_| rng.random_range(0..NUM_ORDERS_RANDOM))
         .collect();
 
-    let mut tracker = LatencyTracker::new(NUM_SAMPLES);
+    let mut tracker = LatencyTracker::new(num_samples);
     for chunk in indices.chunks(RANDOM_BATCH) {
         tracker.record(|| {
             for &idx in chunk {
@@ -463,15 +470,10 @@ fn bench_random_access_packed(seed: u64) -> BenchResult {
         });
     }
 
-    let p = tracker.precentiles().expect("No samples");
-    BenchResult {
-        p50: p.p50,
-        p99: p.p99,
-        max: p.max,
-    }
+    tracker.precentiles().expect("No samples")
 }
 
-fn bench_random_access_aligned(seed: u64) -> BenchResult {
+fn bench_random_access_aligned(seed: u64, num_samples: usize) -> BenchResult {
     let mut rng = StdRng::seed_from_u64(seed);
     let orders: Vec<OrderAligned64> = (0..NUM_ORDERS_RANDOM)
         .map(|i| OrderAligned64 {
@@ -482,11 +484,11 @@ fn bench_random_access_aligned(seed: u64) -> BenchResult {
         })
         .collect();
 
-    let indices: Vec<usize> = (0..NUM_SAMPLES * RANDOM_BATCH)
+    let indices: Vec<usize> = (0..num_samples * RANDOM_BATCH)
         .map(|_| rng.random_range(0..NUM_ORDERS_RANDOM))
         .collect();
 
-    let mut tracker = LatencyTracker::new(NUM_SAMPLES);
+    let mut tracker = LatencyTracker::new(num_samples);
     for chunk in indices.chunks(RANDOM_BATCH) {
         tracker.record(|| {
             for &idx in chunk {
@@ -496,12 +498,7 @@ fn bench_random_access_aligned(seed: u64) -> BenchResult {
         });
     }
 
-    let p = tracker.precentiles().expect("No samples");
-    BenchResult {
-        p50: p.p50,
-        p99: p.p99,
-        max: p.max,
-    }
+    tracker.precentiles().expect("No samples")
 }
 
 // ============================================================================
@@ -514,7 +511,7 @@ fn bench_random_access_aligned(seed: u64) -> BenchResult {
 // Each sample rebuilds from scratch so reallocation cost is included.
 // We batch NUM_ORDERS pushes per sample — the unit is "insert NUM_ORDERS orders".
 
-fn bench_insert_default(seed: u64) -> BenchResult {
+fn bench_insert_default(seed: u64, num_samples: usize) -> BenchResult {
     let mut rng = StdRng::seed_from_u64(seed);
     let prepared: Vec<OrderDefault> = (0..NUM_ORDERS)
         .map(|i| OrderDefault {
@@ -525,8 +522,8 @@ fn bench_insert_default(seed: u64) -> BenchResult {
         })
         .collect();
 
-    let mut tracker = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         let orders_ref = &prepared;
         tracker.record(|| {
             let mut v: Vec<OrderDefault> = Vec::new();
@@ -537,15 +534,10 @@ fn bench_insert_default(seed: u64) -> BenchResult {
         });
     }
 
-    let p = tracker.precentiles().expect("No samples");
-    BenchResult {
-        p50: p.p50,
-        p99: p.p99,
-        max: p.max,
-    }
+    tracker.precentiles().expect("No samples")
 }
 
-fn bench_insert_packed(seed: u64) -> BenchResult {
+fn bench_insert_packed(seed: u64, num_samples: usize) -> BenchResult {
     let mut rng = StdRng::seed_from_u64(seed);
     let prepared: Vec<OrderPacked> = (0..NUM_ORDERS)
         .map(|i| OrderPacked {
@@ -556,8 +548,8 @@ fn bench_insert_packed(seed: u64) -> BenchResult {
         })
         .collect();
 
-    let mut tracker = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         let orders_ref = &prepared;
         tracker.record(|| {
             let mut v: Vec<OrderPacked> = Vec::new();
@@ -568,15 +560,10 @@ fn bench_insert_packed(seed: u64) -> BenchResult {
         });
     }
 
-    let p = tracker.precentiles().expect("No samples");
-    BenchResult {
-        p50: p.p50,
-        p99: p.p99,
-        max: p.max,
-    }
+    tracker.precentiles().expect("No samples")
 }
 
-fn bench_insert_aligned(seed: u64) -> BenchResult {
+fn bench_insert_aligned(seed: u64, num_samples: usize) -> BenchResult {
     let mut rng = StdRng::seed_from_u64(seed);
     let prepared: Vec<OrderAligned64> = (0..NUM_ORDERS)
         .map(|i| OrderAligned64 {
@@ -587,8 +574,8 @@ fn bench_insert_aligned(seed: u64) -> BenchResult {
         })
         .collect();
 
-    let mut tracker = LatencyTracker::new(NUM_SAMPLES);
-    for _ in 0..NUM_SAMPLES {
+    let mut tracker = LatencyTracker::new(num_samples);
+    for _ in 0..num_samples {
         let orders_ref = &prepared;
         tracker.record(|| {
             let mut v: Vec<OrderAligned64> = Vec::new();
@@ -599,12 +586,7 @@ fn bench_insert_aligned(seed: u64) -> BenchResult {
         });
     }
 
-    let p = tracker.precentiles().expect("No samples");
-    BenchResult {
-        p50: p.p50,
-        p99: p.p99,
-        max: p.max,
-    }
+    tracker.precentiles().expect("No samples")
 }
 
 // ============================================================================
@@ -624,7 +606,7 @@ fn print_bench_comparison(
     );
     println!("{:-<65}", "");
     println!(
-        "{:<15} | {:>8} cy {:>4.0}ns | {:>8} cy {:>4.0}ns | {:>8} cy {:>4.0}ns",
+        "{:<15} | {:>8} TSC {:>4.0}ns | {:>8} TSC {:>4.0}ns | {:>8} TSC {:>4.0}ns",
         "p50",
         default.p50,
         tsc_ticks_to_ns(default.p50, tsc_ghz),
@@ -634,7 +616,7 @@ fn print_bench_comparison(
         tsc_ticks_to_ns(aligned.p50, tsc_ghz),
     );
     println!(
-        "{:<15} | {:>8} cy {:>4.0}ns | {:>8} cy {:>4.0}ns | {:>8} cy {:>4.0}ns",
+        "{:<15} | {:>8} TSC {:>4.0}ns | {:>8} TSC {:>4.0}ns | {:>8} TSC {:>4.0}ns",
         "p99",
         default.p99,
         tsc_ticks_to_ns(default.p99, tsc_ghz),
@@ -644,7 +626,7 @@ fn print_bench_comparison(
         tsc_ticks_to_ns(aligned.p99, tsc_ghz),
     );
     println!(
-        "{:<15} | {:>8} cy {:>4.0}ns | {:>8} cy {:>4.0}ns | {:>8} cy {:>4.0}ns",
+        "{:<15} | {:>8} TSC {:>4.0}ns | {:>8} TSC {:>4.0}ns | {:>8} TSC {:>4.0}ns",
         "Max",
         default.max,
         tsc_ticks_to_ns(default.max, tsc_ghz),
@@ -667,22 +649,22 @@ fn print_summary(
     align_ins: &BenchResult,
     _tsc_ghz: f64,
 ) {
-    println!("\np50 comparison (cycles):");
+    println!("\np50 comparison (TSC ticks):");
     println!(
         "{:<15} | {:>14} | {:>14} | {:>14}",
         "Operation", "Default (24B)", "Packed (17B)", "Aligned (64B)"
     );
     println!("{:-<65}", "");
     println!(
-        "{:<15} | {:>12} cy | {:>12} cy | {:>12} cy",
+        "{:<15} | {:>11} TSC | {:>11} TSC | {:>11} TSC",
         "Sequential", def_seq.p50, pack_seq.p50, align_seq.p50
     );
     println!(
-        "{:<15} | {:>12} cy | {:>12} cy | {:>12} cy",
+        "{:<15} | {:>11} TSC | {:>11} TSC | {:>11} TSC",
         "Random Access", def_rnd.p50, pack_rnd.p50, align_rnd.p50
     );
     println!(
-        "{:<15} | {:>12} cy | {:>12} cy | {:>12} cy",
+        "{:<15} | {:>11} TSC | {:>11} TSC | {:>11} TSC",
         "Insert", def_ins.p50, pack_ins.p50, align_ins.p50
     );
 
@@ -708,7 +690,47 @@ fn print_summary(
     );
 
     println!("\nTradeoffs:");
-    println!("  Packed:  -29% memory, but unaligned access penalties on field reads");
-    println!("  Aligned: +167% memory, but zero cache line straddles, zero false sharing");
+    println!("  Packed:  -29% memory and requires unaligned field reads");
+    println!("  Aligned: +167% memory and prevents adjacent records sharing a cache line");
     println!("  Default: balanced — natural alignment with moderate padding");
+}
+
+#[allow(clippy::too_many_arguments)]
+fn export_csv(
+    tsc_ghz: f64,
+    def_seq: &BenchResult,
+    pack_seq: &BenchResult,
+    align_seq: &BenchResult,
+    def_rnd: &BenchResult,
+    pack_rnd: &BenchResult,
+    align_rnd: &BenchResult,
+    def_ins: &BenchResult,
+    pack_ins: &BenchResult,
+    align_ins: &BenchResult,
+) {
+    let mut csv = CsvExporter::create("bench_alignment").expect("failed to create alignment CSV");
+    let layouts = [
+        ("default_24b", [def_seq, def_rnd, def_ins]),
+        ("packed_17b", [pack_seq, pack_rnd, pack_ins]),
+        ("aligned_64b", [align_seq, align_rnd, align_ins]),
+    ];
+    let operations = [
+        "sequential_scan_10000",
+        "random_read_batch_64",
+        "insert_batch_10000",
+    ];
+
+    for (implementation, results) in layouts {
+        for (operation, percentiles) in operations.iter().copied().zip(results) {
+            csv.append(&ResultRow {
+                scenario: "bench_alignment",
+                implementation,
+                operation,
+                tsc_ghz,
+                percentiles,
+            })
+            .expect("failed to append alignment CSV row");
+        }
+    }
+    csv.flush().expect("failed to flush alignment CSV");
 }

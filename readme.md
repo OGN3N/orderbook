@@ -26,7 +26,7 @@ All variants maintain an order-ID index for cancellation and are checked against
 - A baseline comparison of insertion, cancellation, and market-order latency.
 - Four price-distribution workloads: [uniform](docs/02_uniform_distribution.md), [clustered](docs/03_clustered_distribution.md), [Zipfian](docs/04_zipfian_distribution.md), and [bursty](docs/05_bursty_distribution.md).
 - Operational workloads covering a [10:1 cancellation ratio](docs/06_high_cancel.md), [multi-level market sweeps](docs/07_sweep.md), [order-book build-up](docs/08_buildup.md), and stable-depth mixed traffic.
-- Isolated experiments for order alignment, huge pages, software prefetching, and market-order matching strategy.
+- Isolated experiments for [order-record alignment and padding](docs/09_alignment.md), huge pages, software prefetching, and market-order matching strategy.
 - CSV export containing minimum, mean, maximum, p50, p95, p99, p99.9, and p99.99 latency.
 - Reproducible SVG figures for the documented distribution and operational scenarios.
 - A written [experimental methodology](docs/01_methodology.md), including timing boundaries, TSC calibration, statistical aggregation, and limitations.
@@ -106,6 +106,7 @@ python3 scripts/generate_thesis_plots.py --scenario clustered
 python3 scripts/generate_thesis_plots.py --scenario zipfian
 python3 scripts/generate_thesis_plots.py --scenario bursty
 python3 scripts/generate_thesis_plots.py --scenario buildup
+python3 scripts/generate_thesis_plots.py --scenario alignment
 ```
 
-The CSVs contain aggregate percentiles rather than raw samples. The generated latency graphics are therefore percentile comparisons, while the workload graphics visualize the theoretical price generators.
+The CSVs contain aggregate percentiles rather than raw samples. The generated latency graphics are therefore percentile comparisons, while the other graphics visualize workload models or memory layouts rather than raw observations.

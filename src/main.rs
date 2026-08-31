@@ -81,7 +81,7 @@ fn main() {
 
     println!("=== Orderbook Benchmark Runner ===\n");
     println!("Building examples...");
-    build_examples();
+    build_examples(&to_run);
 
     let total = to_run.len();
     let wall_start = Instant::now();
@@ -149,11 +149,13 @@ fn main() {
     }
 }
 
-fn build_examples() {
-    let status = Command::new("cargo")
-        .args(["build", "--examples", "--release", "--quiet"])
-        .status()
-        .expect("cargo not found");
+fn build_examples(benchmarks: &[(&str, &str)]) {
+    let mut command = Command::new("cargo");
+    command.args(["build", "--release", "--quiet"]);
+    for (name, _) in benchmarks {
+        command.args(["--example", name]);
+    }
+    let status = command.status().expect("cargo not found");
     if !status.success() {
         eprintln!("Build failed — fix compile errors before running benchmarks.");
         std::process::exit(1);

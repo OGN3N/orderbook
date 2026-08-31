@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1350" height="670" viewBox="0 0 1350 670">
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="675.00" y="40.00" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#111827" text-anchor="middle">Alignment experiment: median batch latency</text>
+  <text x="675.00" y="66.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">1,000 samples per bar; each panel has its own scale and batch definition</text>
+  <text x="245.00" y="102.00" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#111827" text-anchor="middle">Sequential scan</text>
+  <text x="245.00" y="122.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">Timed batch: 10,000 records</text>
+  <line x1="75.00" y1="510.00" x2="415.00" y2="510.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="66.00" y="515.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">0.0 ns</text>
+  <line x1="75.00" y1="434.00" x2="415.00" y2="434.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="66.00" y="439.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">1.00 μs</text>
+  <line x1="75.00" y1="358.00" x2="415.00" y2="358.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="66.00" y="363.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">2.00 μs</text>
+  <line x1="75.00" y1="282.00" x2="415.00" y2="282.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="66.00" y="287.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">3.00 μs</text>
+  <line x1="75.00" y1="206.00" x2="415.00" y2="206.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="66.00" y="211.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">4.00 μs</text>
+  <line x1="75.00" y1="130.00" x2="415.00" y2="130.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="66.00" y="135.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">5.00 μs</text>
+  <line x1="75.00" y1="130.00" x2="75.00" y2="510.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="75.00" y1="510.00" x2="415.00" y2="510.00" stroke="#374151" stroke-width="1.5"/>
+  <rect x="112.00" y="382.08" width="58.00" height="127.92" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="141.00" y="373.08" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">1.68 μs</text>
+  <text x="141.00" y="534.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Default</text>
+  <text x="141.00" y="552.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="middle">24 B</text>
+  <rect x="217.00" y="414.06" width="58.00" height="95.94" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="246.00" y="405.06" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">1.26 μs</text>
+  <text x="246.00" y="534.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Packed</text>
+  <text x="246.00" y="552.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="middle">17 B</text>
+  <rect x="322.00" y="185.62" width="58.00" height="324.38" fill="#7C3AED" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="351.00" y="176.62" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">4.27 μs</text>
+  <text x="351.00" y="534.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Aligned</text>
+  <text x="351.00" y="552.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="middle">64 B</text>
+  <text x="14.00" y="320.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#111827" text-anchor="middle" transform="rotate(-90.0 14.00 320.00)">Batch latency</text>
+  <text x="675.00" y="102.00" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#111827" text-anchor="middle">Random access</text>
+  <text x="675.00" y="122.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">Timed batch: 64 reads</text>
+  <line x1="505.00" y1="510.00" x2="845.00" y2="510.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="496.00" y="515.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">0.0 ns</text>
+  <line x1="505.00" y1="434.00" x2="845.00" y2="434.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="496.00" y="439.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">100 ns</text>
+  <line x1="505.00" y1="358.00" x2="845.00" y2="358.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="496.00" y="363.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">200 ns</text>
+  <line x1="505.00" y1="282.00" x2="845.00" y2="282.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="496.00" y="287.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">300 ns</text>
+  <line x1="505.00" y1="206.00" x2="845.00" y2="206.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="496.00" y="211.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">400 ns</text>
+  <line x1="505.00" y1="130.00" x2="845.00" y2="130.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="496.00" y="135.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">500 ns</text>
+  <line x1="505.00" y1="130.00" x2="505.00" y2="510.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="505.00" y1="510.00" x2="845.00" y2="510.00" stroke="#374151" stroke-width="1.5"/>
+  <rect x="542.00" y="334.90" width="58.00" height="175.10" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="571.00" y="325.90" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">230 ns</text>
+  <text x="571.00" y="534.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Default</text>
+  <text x="571.00" y="552.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="middle">24 B</text>
+  <rect x="647.00" y="357.70" width="58.00" height="152.30" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="676.00" y="348.70" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">200 ns</text>
+  <text x="676.00" y="534.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Packed</text>
+  <text x="676.00" y="552.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="middle">17 B</text>
+  <rect x="752.00" y="342.50" width="58.00" height="167.50" fill="#7C3AED" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="781.00" y="333.50" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">220 ns</text>
+  <text x="781.00" y="534.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Aligned</text>
+  <text x="781.00" y="552.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="middle">64 B</text>
+  <text x="1105.00" y="102.00" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#111827" text-anchor="middle">Vec construction</text>
+  <text x="1105.00" y="122.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="middle">Timed batch: 10,000 pushes</text>
+  <line x1="935.00" y1="510.00" x2="1275.00" y2="510.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="926.00" y="515.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">0.0 ns</text>
+  <line x1="935.00" y1="434.00" x2="1275.00" y2="434.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="926.00" y="439.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">10.00 μs</text>
+  <line x1="935.00" y1="358.00" x2="1275.00" y2="358.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="926.00" y="363.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">20.00 μs</text>
+  <line x1="935.00" y1="282.00" x2="1275.00" y2="282.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="926.00" y="287.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">30.00 μs</text>
+  <line x1="935.00" y1="206.00" x2="1275.00" y2="206.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="926.00" y="211.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">40.00 μs</text>
+  <line x1="935.00" y1="130.00" x2="1275.00" y2="130.00" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+  <text x="926.00" y="135.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="end">50.00 μs</text>
+  <line x1="935.00" y1="130.00" x2="935.00" y2="510.00" stroke="#374151" stroke-width="1.5"/>
+  <line x1="935.00" y1="510.00" x2="1275.00" y2="510.00" stroke="#374151" stroke-width="1.5"/>
+  <rect x="972.00" y="426.54" width="58.00" height="83.46" fill="#2563EB" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="1001.00" y="417.54" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">10.98 μs</text>
+  <text x="1001.00" y="534.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Default</text>
+  <text x="1001.00" y="552.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="middle">24 B</text>
+  <rect x="1077.00" y="426.39" width="58.00" height="83.61" fill="#F97316" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="1106.00" y="417.39" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">11.00 μs</text>
+  <text x="1106.00" y="534.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Packed</text>
+  <text x="1106.00" y="552.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="middle">17 B</text>
+  <rect x="1182.00" y="221.10" width="58.00" height="288.90" fill="#7C3AED" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="1211.00" y="212.10" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#111827" text-anchor="middle">38.01 μs</text>
+  <text x="1211.00" y="534.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#111827" text-anchor="middle">Aligned</text>
+  <text x="1211.00" y="552.00" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" fill="#4B5563" text-anchor="middle">64 B</text>
+  <text x="675.00" y="608.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#374151" text-anchor="middle">Bars are comparable within a panel; operation panels use different work per timed sample.</text>
+  <text x="675.00" y="640.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="middle">Nanoseconds are derived from the calibrated TSC frequency recorded in results/bench_alignment.csv.</text>
+</svg>

@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780" viewBox="0 0 1200 780">
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="600.00" y="40.00" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="bold" fill="#111827" text-anchor="middle">Alignment and padding layouts</text>
+  <text x="600.00" y="66.00" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#374151" text-anchor="middle">Record boundaries across two 64-byte cache lines</text>
+  <text x="460.00" y="108.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#111827" text-anchor="middle">Cache line 0: bytes 0–63</text>
+  <text x="900.00" y="108.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#111827" text-anchor="middle">Cache line 1: bytes 64–127</text>
+  <text x="220.00" y="163.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#111827" text-anchor="end">Default</text>
+  <text x="220.00" y="187.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">24 B / alignment 8 B</text>
+  <rect x="240.00" y="140.00" width="165.00" height="64.00" fill="#60A5FA" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="322.50" y="179.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O1</text>
+  <rect x="405.00" y="140.00" width="165.00" height="64.00" fill="#60A5FA" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="487.50" y="179.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O2</text>
+  <rect x="570.00" y="140.00" width="165.00" height="64.00" fill="#DC2626" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="652.50" y="179.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O3</text>
+  <rect x="735.00" y="140.00" width="165.00" height="64.00" fill="#60A5FA" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="817.50" y="179.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O4</text>
+  <rect x="900.00" y="140.00" width="165.00" height="64.00" fill="#60A5FA" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="982.50" y="179.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O5</text>
+  <rect x="1065.00" y="140.00" width="55.00" height="64.00" fill="#60A5FA" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="1092.50" y="179.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O6</text>
+  <text x="1120.00" y="224.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">25% theoretical straddles</text>
+  <text x="220.00" y="283.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#111827" text-anchor="end">Packed</text>
+  <text x="220.00" y="307.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">17 B / alignment 1 B</text>
+  <rect x="240.00" y="260.00" width="116.88" height="64.00" fill="#FB923C" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="298.44" y="299.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O1</text>
+  <rect x="356.88" y="260.00" width="116.88" height="64.00" fill="#FB923C" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="415.31" y="299.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O2</text>
+  <rect x="473.75" y="260.00" width="116.88" height="64.00" fill="#FB923C" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="532.19" y="299.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O3</text>
+  <rect x="590.62" y="260.00" width="116.88" height="64.00" fill="#DC2626" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="649.06" y="299.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O4</text>
+  <rect x="707.50" y="260.00" width="116.88" height="64.00" fill="#FB923C" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="765.94" y="299.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O5</text>
+  <rect x="824.38" y="260.00" width="116.88" height="64.00" fill="#FB923C" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="882.81" y="299.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O6</text>
+  <rect x="941.25" y="260.00" width="116.88" height="64.00" fill="#FB923C" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="999.69" y="299.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O7</text>
+  <rect x="1058.12" y="260.00" width="61.88" height="64.00" fill="#FB923C" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="1089.06" y="299.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O8</text>
+  <text x="1120.00" y="344.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">25% theoretical straddles</text>
+  <text x="220.00" y="403.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#111827" text-anchor="end">Aligned</text>
+  <text x="220.00" y="427.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">64 B / alignment 64 B</text>
+  <rect x="240.00" y="380.00" width="440.00" height="64.00" fill="#A78BFA" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="460.00" y="419.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O1</text>
+  <rect x="680.00" y="380.00" width="440.00" height="64.00" fill="#A78BFA" stroke="#FFFFFF" stroke-width="1" opacity="1" rx="0"/>
+  <text x="900.00" y="419.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">O2</text>
+  <text x="1120.00" y="464.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#4B5563" text-anchor="end">0% straddles</text>
+  <line x1="680.00" y1="120.00" x2="680.00" y2="466.00" stroke="#991B1B" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="680.00" y="490.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#991B1B" text-anchor="middle">64-byte boundary</text>
+  <rect x="315.00" y="474.00" width="18.00" height="18.00" fill="#DC2626" stroke="none" stroke-width="1" opacity="1" rx="2"/>
+  <text x="343.00" y="488.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#111827" text-anchor="start">Record crossing the boundary</text>
+  <text x="840.00" y="516.00" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="middle">Boxes show record boundaries, not internal field offsets.</text>
+  <text x="90.00" y="540.00" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#111827" text-anchor="start">Footprint of a 10,000-record Vec</text>
+  <text x="314.00" y="587.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#111827" text-anchor="end">Default</text>
+  <rect x="330.00" y="565.00" width="281.25" height="30.00" fill="#60A5FA" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="623.25" y="586.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#111827" text-anchor="start">234.4 KiB</text>
+  <text x="314.00" y="639.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#111827" text-anchor="end">Packed</text>
+  <rect x="330.00" y="617.00" width="199.22" height="30.00" fill="#FB923C" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="541.22" y="638.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#111827" text-anchor="start">166.0 KiB</text>
+  <text x="314.00" y="691.00" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#111827" text-anchor="end">Aligned</text>
+  <rect x="330.00" y="669.00" width="750.00" height="30.00" fill="#A78BFA" stroke="none" stroke-width="1" opacity="1" rx="3"/>
+  <text x="1092.00" y="690.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#111827" text-anchor="start">625.0 KiB</text>
+  <text x="600.00" y="750.00" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">The straddle calculation assumes a cache-line-aligned vector base; false sharing is not measured.</text>
+</svg>

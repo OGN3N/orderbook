@@ -42,6 +42,7 @@ SCENARIO_TITLES = {
     "high_cancel": "High-cancellation workload",
     "sweep": "Market-sweep workload",
     "buildup": "Order-book build-up workload",
+    "alignment": "Alignment and padding experiment",
 }
 SWEEP_CASES = (("small", 5), ("medium", 20), ("large", 50), ("cross_zone", 150))
 SWEEP_DIRECTIONS = ("buy", "sell")
@@ -51,6 +52,22 @@ BUILDUP_WINDOWS = (
     ("add_depth_5000_5499", 5_000, 5_499),
     ("add_depth_7500_7999", 7_500, 7_999),
     ("add_depth_10000_10499", 10_000, 10_499),
+)
+ALIGNMENT_LAYOUTS = ("default_24b", "packed_17b", "aligned_64b")
+ALIGNMENT_LABELS = {
+    "default_24b": "Default (24 B)",
+    "packed_17b": "Packed (17 B)",
+    "aligned_64b": "Aligned (64 B)",
+}
+ALIGNMENT_COLORS = {
+    "default_24b": "#2563EB",
+    "packed_17b": "#F97316",
+    "aligned_64b": "#7C3AED",
+}
+ALIGNMENT_OPERATIONS = (
+    ("sequential_scan_10000", "Sequential scan", "10,000 records"),
+    ("random_read_batch_64", "Random access", "64 reads"),
+    ("insert_batch_10000", "Vec construction", "10,000 pushes"),
 )
 
 
@@ -198,6 +215,23 @@ def load_buildup_rows(path: Path) -> dict[tuple[str, str], dict[str, str]]:
     if missing:
         formatted = ", ".join(f"{op}/{impl}" for op, impl in missing)
         raise ValueError(f"Build-up CSV is missing expected rows: {formatted}")
+    return indexed
+
+
+def load_alignment_rows(path: Path) -> dict[tuple[str, str], dict[str, str]]:
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+
+    indexed = {(row["operation"], row["implementation"]): row for row in rows}
+    missing = [
+        (operation, layout)
+        for operation, _, _ in ALIGNMENT_OPERATIONS
+        for layout in ALIGNMENT_LAYOUTS
+        if (operation, layout) not in indexed
+    ]
+    if missing:
+        formatted = ", ".join(f"{op}/{layout}" for op, layout in missing)
+        raise ValueError(f"Alignment CSV is missing expected rows: {formatted}")
     return indexed
 
 
@@ -1107,6 +1141,175 @@ def draw_buildup_latency_figure(
     svg.write(path)
 
 
+def draw_alignment_model(path: Path) -> None:
+    width, height = 1200, 780
+    svg = Svg(width, height)
+    svg.text(width / 2, 40, "Alignment and padding layouts", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        66,
+        "Record boundaries across two 64-byte cache lines",
+        size=16,
+        fill="#374151",
+    )
+
+    left, right = 240, 1120
+    line_width = (right - left) / 2
+
+    def byte_x(offset: float) -> float:
+        return left + offset / 128 * (right - left)
+
+    svg.text(left + line_width / 2, 108, "Cache line 0: bytes 0–63", size=14, weight="bold")
+    svg.text(left + line_width + line_width / 2, 108, "Cache line 1: bytes 64–127", size=14, weight="bold")
+
+    layouts = (
+        ("Default", 24, 8, "24 B / alignment 8 B", "25% theoretical straddles"),
+        ("Packed", 17, 1, "17 B / alignment 1 B", "25% theoretical straddles"),
+        ("Aligned", 64, 64, "64 B / alignment 64 B", "0% straddles"),
+    )
+    row_y_values = (140, 260, 380)
+    colors = ("#60A5FA", "#FB923C", "#A78BFA")
+
+    for (name, record_size, _, size_label, straddle_label), row_y, color in zip(
+        layouts, row_y_values, colors
+    ):
+        svg.text(left - 20, row_y + 23, name, size=17, anchor="end", weight="bold")
+        svg.text(left - 20, row_y + 47, size_label, size=12, anchor="end", fill="#4B5563")
+        record_index = 1
+        offset = 0
+        while offset < 128:
+            record_end = min(offset + record_size, 128)
+            straddles = offset < 64 < offset + record_size
+            fill = "#DC2626" if straddles else color
+            x1, x2 = byte_x(offset), byte_x(record_end)
+            svg.rect(x1, row_y, x2 - x1, 64, fill=fill, stroke="#FFFFFF", stroke_width=1)
+            if x2 - x1 >= 42:
+                svg.text(
+                    (x1 + x2) / 2,
+                    row_y + 39,
+                    f"O{record_index}",
+                    size=13,
+                    weight="bold",
+                    fill="#FFFFFF",
+                )
+            offset += record_size
+            record_index += 1
+        svg.text(right, row_y + 84, straddle_label, size=12, anchor="end", fill="#4B5563")
+
+    boundary_x = byte_x(64)
+    svg.line(boundary_x, 120, boundary_x, 466, stroke="#991B1B", stroke_width=2, dash="5 4")
+    svg.text(boundary_x, 490, "64-byte boundary", size=12, weight="bold", fill="#991B1B")
+    svg.rect(315, 474, 18, 18, fill="#DC2626", rx=2)
+    svg.text(343, 488, "Record crossing the boundary", size=12, anchor="start")
+    svg.text(
+        840,
+        516,
+        "Boxes show record boundaries, not internal field offsets.",
+        size=12,
+        fill="#6B7280",
+    )
+
+    svg.text(90, 540, "Footprint of a 10,000-record Vec", size=17, anchor="start", weight="bold")
+    footprint_left, footprint_right = 330, 1080
+    footprint_max = 640_000
+    footprints = (
+        ("Default", 240_000, "234.4 KiB", colors[0]),
+        ("Packed", 170_000, "166.0 KiB", colors[1]),
+        ("Aligned", 640_000, "625.0 KiB", colors[2]),
+    )
+    for index, (name, byte_count, label, color) in enumerate(footprints):
+        y = 565 + index * 52
+        bar_width = (footprint_right - footprint_left) * byte_count / footprint_max
+        svg.text(footprint_left - 16, y + 22, name, size=14, anchor="end", weight="bold")
+        svg.rect(footprint_left, y, bar_width, 30, fill=color, rx=3)
+        svg.text(footprint_left + bar_width + 12, y + 21, label, size=13, anchor="start")
+
+    svg.text(
+        width / 2,
+        750,
+        "The straddle calculation assumes a cache-line-aligned vector base; false sharing is not measured.",
+        size=13,
+        fill="#6B7280",
+    )
+    svg.write(path)
+
+
+def draw_alignment_latency_figure(
+    rows: dict[tuple[str, str], dict[str, str]],
+    path: Path,
+    metric: str,
+) -> None:
+    width, height = 1350, 670
+    svg = Svg(width, height)
+    metric_label = "median" if metric == "p50_ns" else "p99"
+    svg.text(width / 2, 40, f"Alignment experiment: {metric_label} batch latency", size=25, weight="bold")
+    svg.text(
+        width / 2,
+        66,
+        "1,000 samples per bar; each panel has its own scale and batch definition",
+        size=14,
+        fill="#4B5563",
+    )
+
+    panel_lefts = (75, 505, 935)
+    panel_width = 340
+    top, bottom = 130, 510
+    plot_height = bottom - top
+    short_labels = (("Default", "24 B"), ("Packed", "17 B"), ("Aligned", "64 B"))
+
+    for panel_index, (operation, operation_label, batch_label) in enumerate(ALIGNMENT_OPERATIONS):
+        left = panel_lefts[panel_index]
+        values = [float(rows[(operation, layout)][metric]) for layout in ALIGNMENT_LAYOUTS]
+        y_max = nice_max(max(values) * 1.15)
+
+        svg.text(left + panel_width / 2, 102, operation_label, size=18, weight="bold")
+        svg.text(left + panel_width / 2, 122, f"Timed batch: {batch_label}", size=12, fill="#4B5563")
+        for tick in range(6):
+            value = y_max * tick / 5
+            y = bottom - plot_height * value / y_max
+            svg.line(left, y, left + panel_width, y, stroke="#D1D5DB", dash="4 4")
+            svg.text(left - 9, y + 5, format_ns(value), size=11, anchor="end", fill="#4B5563")
+        svg.line(left, top, left, bottom, stroke="#374151", stroke_width=1.5)
+        svg.line(left, bottom, left + panel_width, bottom, stroke="#374151", stroke_width=1.5)
+
+        for index, (layout, value, (short_name, size_label)) in enumerate(
+            zip(ALIGNMENT_LAYOUTS, values, short_labels)
+        ):
+            center = left + 66 + index * 105
+            bar_width = 58
+            bar_height = plot_height * value / y_max
+            svg.rect(
+                center - bar_width / 2,
+                bottom - bar_height,
+                bar_width,
+                bar_height,
+                fill=ALIGNMENT_COLORS[layout],
+                rx=3,
+            )
+            svg.text(center, bottom - bar_height - 9, format_ns(value), size=11, weight="bold")
+            svg.text(center, bottom + 24, short_name, size=12, weight="bold")
+            svg.text(center, bottom + 42, size_label, size=11, fill="#4B5563")
+
+        if panel_index == 0:
+            svg.text(left - 61, (top + bottom) / 2, "Batch latency", size=14, rotate=-90)
+
+    svg.text(
+        width / 2,
+        608,
+        "Bars are comparable within a panel; operation panels use different work per timed sample.",
+        size=14,
+        fill="#374151",
+    )
+    svg.text(
+        width / 2,
+        640,
+        "Nanoseconds are derived from the calibrated TSC frequency recorded in results/bench_alignment.csv.",
+        size=12,
+        fill="#6B7280",
+    )
+    svg.write(path)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1118,7 +1321,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input",
         type=Path,
-        help="Benchmark result CSV (default: results/scenario_<scenario>.csv)",
+        help=(
+            "Benchmark result CSV (default: results/scenario_<scenario>.csv; "
+            "alignment uses results/bench_alignment.csv)"
+        ),
     )
     parser.add_argument(
         "--output-dir",
@@ -1131,7 +1337,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    input_path = args.input or Path(f"results/scenario_{args.scenario}.csv")
+    default_name = (
+        "bench_alignment.csv"
+        if args.scenario == "alignment"
+        else f"scenario_{args.scenario}.csv"
+    )
+    input_path = args.input or Path("results") / default_name
 
     if args.scenario == "sweep":
         rows = load_sweep_rows(input_path)
@@ -1157,6 +1368,20 @@ def main() -> None:
         draw_buildup_latency_figure(rows, args.output_dir / names[0], "p50_ns")
         draw_buildup_latency_figure(rows, args.output_dir / names[1], "p99_ns")
         draw_buildup_model(args.output_dir / names[2])
+        for name in names:
+            print(args.output_dir / name)
+        return
+
+    if args.scenario == "alignment":
+        rows = load_alignment_rows(input_path)
+        names = (
+            "alignment_latency_p50.svg",
+            "alignment_latency_p99.svg",
+            "alignment_layout_model.svg",
+        )
+        draw_alignment_latency_figure(rows, args.output_dir / names[0], "p50_ns")
+        draw_alignment_latency_figure(rows, args.output_dir / names[1], "p99_ns")
+        draw_alignment_model(args.output_dir / names[2])
         for name in names:
             print(args.output_dir / name)
         return
