@@ -30,6 +30,7 @@ All variants maintain an order-ID index for cancellation and are checked against
 - CSV export containing minimum, mean, maximum, p50, p95, p99, p99.9, and p99.99 latency.
 - Reproducible SVG figures for the documented workloads and optimization experiments.
 - A written [experimental methodology](docs/01_methodology.md), including timing boundaries, TSC calibration, statistical aggregation, and limitations.
+- A concluding [comparative evaluation, discussion of future directions, and conclusion](docs/11_comparative_evaluation_and_conclusion.md).
 
 The current experiments measure **latency**, not throughput or hardware performance counters. On x86-64, operations are bounded with `LFENCE`/`RDTSC` at the start and `RDTSCP`/`LFENCE` at the end. The time-stamp counter is calibrated against a monotonic clock for each run. CSV files retain the directly measured TSC ticks and their derived nanosecond values.
 
