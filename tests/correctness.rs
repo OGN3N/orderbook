@@ -33,6 +33,7 @@ struct NormFills {
     total_qty: u32,
 }
 
+#[allow(unused)]
 impl NormFills {
     fn from(fills: Vec<Fill>) -> Self {
         let mut by_price = BTreeMap::new();

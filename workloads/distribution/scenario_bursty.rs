@@ -1,4 +1,6 @@
 use orderbook::analysis::{CsvExporter, ResultRow};
+use orderbook::methodology::latency::{LatencyTracker, Percentiles};
+use orderbook::methodology::{get_tsc_frequency, tsc_ticks_to_ns};
 use orderbook::orderbook::OrderbookTrait;
 use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 /// Scenario 4.1d: Bursty Traffic
@@ -10,8 +12,6 @@ use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
 use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook;
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
-use orderbook::perf::latency::{LatencyTracker, Percentiles};
-use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;

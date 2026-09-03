@@ -1,23 +1,24 @@
 use orderbook::analysis::{CsvExporter, ResultRow};
+use orderbook::methodology::latency::{LatencyTracker, Percentiles};
+use orderbook::methodology::{get_tsc_frequency, tsc_ticks_to_ns};
 use orderbook::orderbook::OrderbookTrait;
 use orderbook::orderbook::SoA::orderbook::Orderbook as SoAOrderbook;
-/// Scenario 4.1b: Clustered Around Mid Distribution
+/// Scenario 4.1c: Zipfian Distribution
 ///
-/// 90% of orders within ±10 ticks of mid-price
-/// Tests hot-path optimization and cache locality
+/// Power-law distribution: some prices are very popular, most are rare
+/// Tests cache effectiveness under a highly skewed synthetic workload
 ///
-/// Run with: cargo run --release --example scenario_clustered
+/// Run with: cargo run --release --example scenario_zipfian
 use orderbook::orderbook::fixed_tick::orderbook::Orderbook as FixedTickOrderbook;
 use orderbook::orderbook::hybrid::orderbook::Orderbook as HybridOrderbook;
 use orderbook::orderbook::tree::orderbook::Orderbook as TreeOrderbook;
-use orderbook::perf::latency::{LatencyTracker, Percentiles};
-use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
 use orderbook::types::order::{IdCounter, Order, Side};
 use orderbook::types::price::Price;
 use orderbook::types::quantity::Quantity;
 use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
+use rand_distr::Zipf;
 
 const TOTAL_SAMPLES: usize = 1_000_000;
 const ORDERS_PER_BOOK: usize = 10_000;
@@ -26,44 +27,54 @@ const MARKET_SAMPLES_PER_BOOK: usize = 100;
 const ORDER_QUANTITY: u32 = 100;
 const MARKET_SEED_OFFSET: u64 = 1_000_000;
 const MID_PRICE: u32 = 5_000;
-const CLUSTER_RADIUS: u32 = 10; // ±10 ticks from mid
-const CLUSTER_PROBABILITY: f64 = 0.90; // 90% within cluster
+const NUM_PRICE_LEVELS: f64 = 200.0; // Number of distinct price levels around mid
+const ZIPF_EXPONENT: f64 = 1.0; // Classic Zipf distribution (s=1)
 
 // ============================================================================
-// Scenario 4.1b: Clustered Around Mid Distribution
+// Scenario 4.1c: Zipfian Distribution
 // ============================================================================
 //
-// PURPOSE: Test hot-path optimization and cache locality
+// PURPOSE: Test cache effectiveness under a highly skewed synthetic workload
 //
-// WHAT IT DOES:
-// - 90% of orders fall within ±10 ticks of mid-price (4990-5010)
-// - 10% of orders scattered across full price range
-// - This mimics real market behavior where most activity is near the spread
+// WHAT IS ZIPFIAN?
+// Zipf's law: In many datasets, the k-th most common item appears with
+// frequency proportional to 1/k^s. With s=1:
+//   - Rank 1: frequency 1.0 (most popular)
+//   - Rank 2: frequency 0.5
+//   - Rank 3: frequency 0.33
+//   - Rank 10: frequency 0.1
+//   - Rank 100: frequency 0.01
 //
-// WHY IT MATTERS:
-// 1. Cache Locality: Tight price clustering means the same memory pages are
-//    accessed repeatedly. CPU caches (L1/L2/L3) stay warm. Prefetching works.
+// This means a few prices get LOTS of orders, while most prices are rarely used.
 //
-// 2. Hot Zone Test: Hybrid orderbook has a "hot zone" around mid-price using
-//    a fast array. This scenario directly tests that optimization path.
+// WHY IT IS USEFUL:
+// Real markets often exhibit highly skewed activity:
+// - Prices near the current market get the most activity
+// - Prices 1-2 ticks away get moderate activity
+// - Prices far from mid are rarely touched
+// This generator is a controlled synthetic approximation, not a calibrated
+// model of a particular real market.
 //
-// 3. Realistic Baseline: Real markets cluster activity near the current price.
-//    Traders place orders near the spread, not at extreme prices. This is the
-//    "normal" workload that orderbooks should optimize for.
+// WHAT THIS TESTS:
+// 1. Cache Efficiency: Hot prices should stay cached. Cold prices cause misses.
+//    Good implementations exploit temporal locality.
 //
-// 4. Branch Prediction: Repeated similar access patterns help CPU branch
-//    predictors. The hot path becomes very predictable.
+// 2. Data Structure Adaptation: Some structures naturally handle skewed access
+//    better than others. BTreeMap remains balanced but retains lookup overhead.
+//
+// 3. Memory Allocation: Frequently accessed price levels may trigger different
+//    allocation patterns than uniform access.
 //
 // EXPECTED RESULTS:
-// - Hybrid: Should EXCEL - hot zone is designed exactly for this pattern
-// - Fixed-Tick: Good - benefits from cache locality on small region
-// - SoA: Good - cache-friendly layout benefits from locality
-// - Tree: May show overhead from tree balancing, but still benefits from
-//   locality in node traversal
+// - All implementations should benefit vs uniform random (hot prices cached)
+// - Fixed-tick: O(1) regardless of popularity, but cache helps
+// - Hybrid: Hot zone covers popular prices well
+// - Tree: Stays balanced and benefits from cached hot nodes, but retains tree
+//   lookup overhead
 // ============================================================================
 
 fn main() {
-    println!("=== Scenario 4.1b: Clustered Around Mid ===\n");
+    println!("=== Scenario 4.1c: Zipfian Distribution ===\n");
 
     let tsc_ghz = get_tsc_frequency();
     println!("TSC frequency (calibrated): {:.3} GHz", tsc_ghz);
@@ -84,38 +95,58 @@ fn main() {
 
     println!("\nParameters:");
     println!("  Mid price: {}", MID_PRICE);
-    println!("  Cluster radius: ±{} ticks", CLUSTER_RADIUS);
-    println!("  Cluster probability: {}%", CLUSTER_PROBABILITY * 100.0);
+    println!("  Price levels: {} (around mid)", NUM_PRICE_LEVELS);
+    println!("  Zipf exponent: {} (classic Zipf)", ZIPF_EXPONENT);
     println!("  Measurements per operation: {}", TOTAL_SAMPLES);
     println!("  Orders per add/cancel book: {}", ORDERS_PER_BOOK);
     println!(
-        "  Market workload per book: {} asks, {} measured buys\n",
+        "  Market workload per book: {} asks, {} measured buys",
         MARKET_ORDERS_PER_BOOK, MARKET_SAMPLES_PER_BOOK
     );
+
+    // Show distribution preview
+    println!("\nDistribution preview (expected hits per 10,000-order book):");
+    let num_levels = NUM_PRICE_LEVELS as u64;
+    let total_weight: f64 = (1..=num_levels).map(|k| 1.0 / (k as f64)).sum();
+    for rank in [1u64, 2, 5, 10, 50, 100, 200].iter() {
+        if *rank <= num_levels {
+            let prob = (1.0 / (*rank as f64)) / total_weight;
+            let expected_hits = (prob * ORDERS_PER_BOOK as f64) as u32;
+            let price = zipf_rank_to_price(*rank as u32);
+            println!(
+                "  Rank {:>3} → price {}: ~{:>4} orders ({:.2}%)",
+                rank,
+                price,
+                expected_hits,
+                prob * 100.0
+            );
+        }
+    }
+    println!();
 
     let seed: u64 = 42;
 
     println!("--- Fixed-Tick Array ---");
-    let fixed = scenario_clustered_mid::<FixedTickOrderbook>(seed);
+    let fixed = scenario_zipfian::<FixedTickOrderbook>(seed);
     print_results(&fixed, tsc_ghz);
 
     println!("\n--- Structure-of-Arrays (SoA) ---");
-    let soa = scenario_clustered_mid::<SoAOrderbook>(seed);
+    let soa = scenario_zipfian::<SoAOrderbook>(seed);
     print_results(&soa, tsc_ghz);
 
     println!("\n--- Hybrid (Hot/Cold) ---");
-    let hybrid = scenario_clustered_mid::<HybridOrderbook>(seed);
+    let hybrid = scenario_zipfian::<HybridOrderbook>(seed);
     print_results(&hybrid, tsc_ghz);
 
     println!("\n--- Tree-Based ---");
-    let tree = scenario_clustered_mid::<TreeOrderbook>(seed);
+    let tree = scenario_zipfian::<TreeOrderbook>(seed);
     print_results(&tree, tsc_ghz);
 
     println!("\n--- Comparison (p50 latency in cycles) ---");
     print_comparison(&fixed, &soa, &hybrid, &tree);
 
     // Export results to CSV
-    let scenario_name = "scenario_clustered";
+    let scenario_name = "scenario_zipfian";
     let impls = [
         ("fixed_tick", &fixed),
         ("soa", &soa),
@@ -150,28 +181,43 @@ struct ScenarioResults {
     market_order: Percentiles,
 }
 
-/// Generate a price following the clustered distribution:
-/// - 90% chance: within ±10 ticks of mid (4990-5010)
-/// - 10% chance: anywhere in full range (1-9999)
-fn generate_clustered_price(rng: &mut impl Rng) -> u32 {
-    if rng.random_bool(CLUSTER_PROBABILITY) {
-        // Clustered: mid ± radius
-        let offset = rng.random_range(0..=CLUSTER_RADIUS * 2);
-        (MID_PRICE - CLUSTER_RADIUS + offset).clamp(1, 9999)
-    } else {
-        // Scattered: full range
-        rng.random_range(1..10000)
-    }
+/// Generate a price following a Zipfian distribution around mid-price.
+/// Rank 1 is mid; higher ranks alternate above and below mid by distance.
+fn generate_zipfian_price(rng: &mut impl Rng, zipf: &Zipf<f64>) -> u32 {
+    // Sample a rank (1 to NUM_PRICE_LEVELS)
+    let rank = zipf.sample(rng) as u32;
+    zipf_rank_to_price(rank)
 }
 
-fn scenario_clustered_mid<O: OrderbookTrait>(seed: u64) -> ScenarioResults {
+fn zipf_rank_to_price(rank: u32) -> u32 {
+    debug_assert!((1..=NUM_PRICE_LEVELS as u32).contains(&rank));
+
+    // Convert rank to price offset from mid
+    // Rank 1 -> offset 0 (mid price)
+    // Rank 2 -> offset 1 (mid + 1)
+    // Rank 3 -> offset -1 (mid - 1)
+    // Rank 4 -> offset 2 (mid + 2)
+    // etc. (alternating sides)
+    let offset = if rank == 1 {
+        0i32
+    } else {
+        let distance = (rank / 2) as i32;
+        if rank % 2 == 0 { distance } else { -distance }
+    };
+
+    (MID_PRICE as i32 + offset).clamp(1, 9999) as u32
+}
+
+fn scenario_zipfian<O: OrderbookTrait>(seed: u64) -> ScenarioResults {
+    let zipf = Zipf::new(NUM_PRICE_LEVELS, ZIPF_EXPONENT).expect("Invalid Zipf parameters");
+
     let mut add_tracker = LatencyTracker::new(TOTAL_SAMPLES);
     let mut cancel_tracker = LatencyTracker::new(TOTAL_SAMPLES);
     let mut market_tracker = LatencyTracker::new(TOTAL_SAMPLES);
 
     // Phases 1 and 2: repeatedly build and empty a 10,000-order book. Fixed
-    // batch size preserves the original clustered level density while giving
-    // tail percentiles one million observations.
+    // batch size preserves the original Zipfian density while collecting one
+    // million observations for stable tail percentiles.
     let mut remaining_order_samples = TOTAL_SAMPLES;
     let mut order_batch_index = 0u64;
 
@@ -183,10 +229,10 @@ fn scenario_clustered_mid<O: OrderbookTrait>(seed: u64) -> ScenarioResults {
         let mut id_counter = IdCounter::new();
         let mut order_ids = Vec::with_capacity(batch_size);
 
-        // Phase 1: measure additions using the clustered price distribution.
+        // Phase 1: measure additions using the Zipfian price distribution.
         for i in 0..batch_size {
             let side = if i % 2 == 0 { Side::Bid } else { Side::Ask };
-            let price_value = generate_clustered_price(&mut rng);
+            let price_value = generate_zipfian_price(&mut rng, &zipf);
             let order = Order::new(
                 Price::define(price_value),
                 Quantity::define(ORDER_QUANTITY),
@@ -213,7 +259,7 @@ fn scenario_clustered_mid<O: OrderbookTrait>(seed: u64) -> ScenarioResults {
         order_batch_index += 1;
     }
 
-    // Phase 3: repeatedly populate an independent clustered ask book, measure
+    // Phase 3: repeatedly populate an independent Zipfian ask book, measure
     // 100 market buys, and reset before its density changes materially.
     let mut remaining_market_samples = TOTAL_SAMPLES;
     let mut market_batch_index = 0u64;
@@ -227,7 +273,7 @@ fn scenario_clustered_mid<O: OrderbookTrait>(seed: u64) -> ScenarioResults {
         let mut id_counter = IdCounter::new();
 
         for _ in 0..MARKET_ORDERS_PER_BOOK {
-            let price_value = generate_clustered_price(&mut rng);
+            let price_value = generate_zipfian_price(&mut rng, &zipf);
             let order = Order::new(
                 Price::define(price_value),
                 Quantity::define(ORDER_QUANTITY),
@@ -352,4 +398,31 @@ fn print_comparison(
         hybrid.market_order.p50,
         tree.market_order.p50
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    #[test]
+    fn zipf_ranks_alternate_around_mid_without_skipping_ticks() {
+        assert_eq!(zipf_rank_to_price(1), 5_000);
+        assert_eq!(zipf_rank_to_price(2), 5_001);
+        assert_eq!(zipf_rank_to_price(3), 4_999);
+        assert_eq!(zipf_rank_to_price(4), 5_002);
+        assert_eq!(zipf_rank_to_price(5), 4_998);
+    }
+
+    #[test]
+    fn all_zipf_ranks_map_to_distinct_valid_prices() {
+        let prices: HashSet<u32> = (1..=NUM_PRICE_LEVELS as u32)
+            .map(zipf_rank_to_price)
+            .collect();
+
+        assert_eq!(prices.len(), NUM_PRICE_LEVELS as usize);
+        assert!(prices.iter().all(|price| (1..10_000).contains(price)));
+        assert_eq!(zipf_rank_to_price(199), 4_901);
+        assert_eq!(zipf_rank_to_price(200), 5_100);
+    }
 }

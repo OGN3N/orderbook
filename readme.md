@@ -40,11 +40,11 @@ The completed distribution experiments show that no layout dominates every opera
 
 ```text
 src/orderbook/          four order-book implementations and common trait
-src/perf/               TSC timing, calibration, and percentile collection
-examples/baseline/      baseline latency benchmark
-examples/distribution/  uniform, clustered, Zipfian, and bursty workloads
-examples/operational/   cancellation, sweep, build-up, and steady-state tests
-examples/optimizations/ isolated memory-layout and access-path experiments
+src/methodology/         TSC timing, calibration, and percentile collection
+workloads/baseline/      baseline latency benchmark
+workloads/distribution/  uniform, clustered, Zipfian, and bursty workloads
+workloads/operational/   cancellation, sweep, build-up, and steady-state tests
+workloads/optimizations/ isolated memory-layout and access-path experiments
 tests/                  deterministic and property-based correctness tests
 results/                generated benchmark CSV files
 figures/                generated thesis SVG figures

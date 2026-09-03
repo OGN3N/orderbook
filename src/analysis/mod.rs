@@ -1,4 +1,4 @@
-use crate::perf::{latency::Percentiles, tsc_ticks_to_ns};
+use crate::methodology::{latency::Percentiles, tsc_ticks_to_ns};
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 

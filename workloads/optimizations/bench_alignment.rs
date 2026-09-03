@@ -12,8 +12,8 @@
 ///
 /// Run with: cargo run --release --example bench_alignment
 use orderbook::analysis::{CsvExporter, ResultRow};
-use orderbook::perf::latency::{LatencyTracker, Percentiles};
-use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
+use orderbook::methodology::latency::{LatencyTracker, Percentiles};
+use orderbook::methodology::{get_tsc_frequency, tsc_ticks_to_ns};
 use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
@@ -77,6 +77,7 @@ const RANDOM_BATCH: usize = 64; // accesses per sample — amortises RDTSC overh
 /// Default Rust alignment: 8-byte aligned, 24 bytes total
 /// Fields reordered by compiler for optimal packing
 #[derive(Clone, Copy)]
+#[allow(unused)]
 struct OrderDefault {
     id: u64,       // 8 bytes
     side: u8,      // 1 byte
@@ -89,6 +90,7 @@ struct OrderDefault {
 /// Fields are laid out exactly as declared
 #[repr(packed)]
 #[derive(Clone, Copy)]
+#[allow(unused)]
 struct OrderPacked {
     id: u64,       // 8 bytes
     side: u8,      // 1 byte (no padding!)

@@ -80,8 +80,8 @@ fn main() {
     };
 
     println!("=== Orderbook Benchmark Runner ===\n");
-    println!("Building examples...");
-    build_examples(&to_run);
+    println!("Building workloads...");
+    build_workloads(&to_run);
 
     let total = to_run.len();
     let wall_start = Instant::now();
@@ -93,7 +93,7 @@ fn main() {
         println!("{}", "─".repeat(72));
 
         let t = Instant::now();
-        let ok = run_example(name);
+        let ok = run_workload(name);
         let elapsed = t.elapsed().as_secs_f64();
 
         let time_str = if elapsed < 1.0 {
@@ -149,7 +149,7 @@ fn main() {
     }
 }
 
-fn build_examples(benchmarks: &[(&str, &str)]) {
+fn build_workloads(benchmarks: &[(&str, &str)]) {
     let mut command = Command::new("cargo");
     command.args(["build", "--release", "--quiet"]);
     for (name, _) in benchmarks {
@@ -163,7 +163,7 @@ fn build_examples(benchmarks: &[(&str, &str)]) {
     println!("Build OK\n");
 }
 
-fn run_example(name: &str) -> bool {
+fn run_workload(name: &str) -> bool {
     let binary = format!("target/release/examples/{}", name);
     Command::new(&binary)
         .status()

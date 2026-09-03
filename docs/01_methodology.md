@@ -119,7 +119,7 @@ The current harness does not pin the benchmark thread to one logical processor. 
 
 ## 5.5 Execution protocol and reproducibility
 
-The scenarios are compiled and executed with Rust's optimized release profile. Running a named scenario through the benchmark runner builds the release examples, executes the selected binary, and overwrites its corresponding CSV in the `results/` directory.
+The scenarios are compiled and executed with Rust's optimized release profile. Running a named scenario through the benchmark runner builds the release workload targets, executes the selected binary, and overwrites its corresponding CSV in the `results/` directory.
 
 All four price-distribution scenarios can be regenerated together with:
 

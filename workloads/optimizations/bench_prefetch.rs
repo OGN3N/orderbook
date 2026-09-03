@@ -7,8 +7,8 @@
 ///
 /// NOTE: x86_64 only (uses _mm_prefetch intrinsics)
 use orderbook::analysis::{CsvExporter, ResultRow};
-use orderbook::perf::latency::{LatencyTracker, Percentiles};
-use orderbook::perf::{get_tsc_frequency, tsc_ticks_to_ns};
+use orderbook::methodology::latency::{LatencyTracker, Percentiles};
+use orderbook::methodology::{get_tsc_frequency, tsc_ticks_to_ns};
 use rand::SeedableRng;
 use rand::prelude::*;
 use rand::rngs::StdRng;
